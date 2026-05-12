@@ -1,0 +1,13 @@
+{{shard "Webserver"}}
+{{begin "Routes"}}
+
+{{set "name" "web-server-route"}}
+{{set "runs-on" "web-server-service"}}
+{{receive "host"}}
+
+{{begin "Services"}}
+{{set "name" "web-server-service"}}
+{{set "runs-on" "web-server"}}
+{{set "port" "80"}}
+{{set "targetPort" "80"}}
+{{seal}}

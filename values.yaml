@@ -1,0 +1,17 @@
+routes:
+  - host: scorevaulting.zagoapps.com
+    name: web-server-route-1
+    replicas: "6"
+    runs-on: web-server-service-1
+  - host: ""
+    name: web-server-route
+    runs-on: web-server-service
+services:
+  - name: web-server-service-1
+    port: "80"
+    runs-on: web-server-1
+    targetPort: "80"
+  - name: web-server-service
+    port: "80"
+    runs-on: web-server
+    targetPort: "80"

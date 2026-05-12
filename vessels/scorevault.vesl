@@ -1,0 +1,9 @@
+{{- cast "Webserver" "webborino" -}}
+{{- cast "Webserver" "webex" -}}
+---
+
+########
+{{ override .webex.Routes "host" "scorevaulting.zagoapps.com" }}
+{{ override .webex.Routes "replicas" "6" }}
+{{summon}}
+
