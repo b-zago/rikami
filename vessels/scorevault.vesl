@@ -4,6 +4,6 @@
 
 ########
 {{ override .webex.Routes "host" "scorevaulting.zagoapps.com" }}
-{{ override .webex.Routes "replicas" "6" }}
+{{ override .webex.Routes "replicas" "2" }}
 {{summon}}
 

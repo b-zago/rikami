@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"slices"
-	"strconv"
 	s "strings"
 	"text/template"
 
@@ -19,43 +17,19 @@ func check(e error) {
 	}
 }
 
-type ShardPart struct {
-	Values map[string]any `yaml:",inline"`
-}
-
-type ShardMap struct {
-	Values map[string]map[string]ShardPart
-}
-
-type Vessel struct {
-	Values map[string][]ShardPart `yaml:",inline"`
-}
-
-var (
-	shardMap         ShardMap
-	shards           = make(map[string][]string)
-	currentShardPart string
-	currentShard     string
-	shardCounter     = 0
-	bindLabels       = []string{"runs-on", "name"}
-	vesselFinal      = Vessel{make(map[string][]ShardPart)}
-	buf              bytes.Buffer
-)
-
 func main() {
-	shardMap.Values = make(map[string]map[string]ShardPart)
-
+	summon := NewSummon()
 	shardFuncMap := template.FuncMap{
-		"set":     setShardVal,
-		"begin":   beginShardPart,
-		"shard":   beginShard,
-		"receive": receive,
-		"seal":    endShard,
+		"set":     summon.setShardVal,
+		"begin":   summon.beginShardPart,
+		"shard":   summon.beginShard,
+		"receive": summon.receive,
+		"seal":    summon.endShard,
 	}
 	vesselFuncMap := template.FuncMap{
-		"cast":     collectShard,
-		"summon":   soulGen,
-		"override": override,
+		"cast":     summon.collectShard,
+		"summon":   summon.soulGen,
+		"override": summon.override,
 	}
 
 	vessel, err := os.ReadFile("vessels/scorevault.vesl")
@@ -70,7 +44,7 @@ func main() {
 	err = vesselShardsTmpl.Execute(io.Discard, nil)
 	check(err)
 
-	for key, val := range shards {
+	for key, val := range summon.Shards {
 		shard, err := os.ReadFile(fmt.Sprintf("shards/%s.shard", key))
 		check(err)
 		shardString := string(shard)
@@ -81,86 +55,20 @@ func main() {
 			check(err)
 		}
 	}
-	fmt.Println("shards map:", shards)
+	fmt.Println("shards map:", summon.Shards)
 	fmt.Println("-----------------------")
-	err = vesselTraitsTmpl.Execute(os.Stdout, shardMap.Values)
+	err = vesselTraitsTmpl.Execute(os.Stdout, summon.ShardMap)
 	check(err)
 
 	fmt.Println("-----------------------")
-	fmt.Println(shardMap.Values)
+	fmt.Println(summon.ShardMap)
 
 	fmt.Println("-----------------------")
-	fmt.Println(vesselFinal)
+	fmt.Println(summon.Vessel)
 
+	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf, yaml.Indent(2), yaml.IndentSequence(true))
-	check(enc.Encode(vesselFinal))
+	check(enc.Encode(summon.Vessel))
 	enc.Close()
 	check(os.WriteFile("values.yaml", buf.Bytes(), 0644))
-}
-
-func beginShard(key string) string {
-	// get shards[key] as an global slice and loop over it for every op or MUCH SIMPLIER just have global counter and add {{end}} function to shards that will increment it
-	shardKey, present := shards[key]
-	if !present {
-		shardCounter = 0
-	}
-	currentShard = shardKey[shardCounter]
-	fmt.Println("begin shard:", currentShard)
-	shardMap.Values[currentShard] = make(map[string]ShardPart)
-	return key
-}
-
-func beginShardPart(key string) string {
-	currentShardPart = key
-	shardMap.Values[currentShard][currentShardPart] = ShardPart{Values: make(map[string]any)}
-	fmt.Printf("begin shard part: %s with value: %v\n", key, shardMap.Values[currentShard][currentShardPart])
-
-	return key
-}
-
-func setShardVal(key string, val any) string {
-	if slices.Contains(bindLabels, key) && shardCounter > 0 {
-		val = val.(string) + "-" + strconv.Itoa(shardCounter)
-	}
-	shardMap.Values[currentShard][currentShardPart].Values[key] = val
-	fmt.Printf("setting value under %s at %s", currentShard, currentShardPart)
-	fmt.Println("set the value as: ", shardMap.Values[currentShard][currentShardPart])
-	return fmt.Sprintf("%s: %v", key, val)
-}
-
-func collectShard(key string, name string) string {
-	shards[key] = append(shards[key], name)
-	fmt.Println(shards[key])
-	return key
-}
-
-func receive(key string) string {
-	shardMap.Values[currentShard][currentShardPart].Values[key] = ""
-	return key
-}
-
-func override(shardPart ShardPart, key string, val string) string {
-	shardPart.Values[key] = val
-	return ""
-}
-
-func endShard() string {
-	shardCounter++
-	return ""
-}
-
-func soulGen() string {
-	for shardName, shardVals := range shardMap.Values {
-		fmt.Println(shardName, shardVals)
-		for shardVal, shardFragment := range shardVals {
-			fmt.Println(shardVal, shardFragment)
-			vslGroupName := s.ToLower(shardVal)
-			vslGroup := vesselFinal.Values[vslGroupName]
-			vesselFinal.Values[vslGroupName] = append(vslGroup, shardFragment)
-			for fragmentKey, fragmentVal := range shardFragment.Values {
-				fmt.Println(fragmentKey, fragmentVal)
-			}
-		}
-	}
-	return ""
 }
