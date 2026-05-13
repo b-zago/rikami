@@ -8,6 +8,6 @@
 {{begin "Services"}}
 {{set "name" "web-server-service"}}
 {{set "runs-on" "web-server"}}
-{{set "port" "80"}}
-{{set "targetPort" "80"}}
+{{set "port" 80}}
+{{set "targetPort" 80}}
 {{seal}}

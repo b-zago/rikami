@@ -32,65 +32,75 @@ func NewSummon() *Summon {
 	return &summon
 }
 
-func (summon *Summon) beginShard(key string) string {
-	// get shards[key] as an global slice and loop over it for every op or MUCH SIMPLIER just have global counter and add {{end}} func (summon *Summon)tion to shards that will increment it
-	shardKey, present := summon.Shards[key]
+func (smn *Summon) beginShard(key string) string {
+	// get shards[key] as an global slice and loop over it for every op or MUCH SIMPLIER just have global counter and add {{end}} func (smn *Summon)tion to shards that will increment it
+	shardKey, present := smn.Shards[key]
 	if !present {
-		summon.ShardCounter = 0
+		smn.ShardCounter = 0
 	}
-	summon.CurrentShard = shardKey[summon.ShardCounter]
-	fmt.Println("begin shard:", summon.CurrentShard)
-	summon.ShardMap[summon.CurrentShard] = make(map[string]ShardPart)
+	smn.CurrentShard = shardKey[smn.ShardCounter]
+	fmt.Println("begin shard:", smn.CurrentShard)
+	smn.ShardMap[smn.CurrentShard] = make(map[string]ShardPart)
 	return key
 }
 
-func (summon *Summon) beginShardPart(key string) string {
-	summon.CurrentShardPart = key
-	summon.ShardMap[summon.CurrentShard][summon.CurrentShardPart] = ShardPart{Values: make(map[string]any)}
-	fmt.Printf("begin shard part: %s with value: %v\n", key, summon.ShardMap[summon.CurrentShard][summon.CurrentShardPart])
+func (smn *Summon) beginShardPart(key string) string {
+	smn.CurrentShardPart = key
+	smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart] = ShardPart{Values: make(map[string]any)}
+	fmt.Printf("begin shard part: %s with value: %v\n", key, smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart])
 
 	return key
 }
 
-func (summon *Summon) setShardVal(key string, val any) string {
-	if slices.Contains(summon.BindLabels, key) && summon.ShardCounter > 0 {
-		val = val.(string) + "-" + strconv.Itoa(summon.ShardCounter)
+func (smn *Summon) setShardVal(key string, val any) string {
+	switch v := val.(type) {
+	case string:
+		if slices.Contains(smn.BindLabels, key) && smn.ShardCounter > 0 {
+			val = v + "-" + strconv.Itoa(smn.ShardCounter)
+		}
+	case int:
+		val = v
 	}
-	summon.ShardMap[summon.CurrentShard][summon.CurrentShardPart].Values[key] = val
-	fmt.Printf("setting value under %s at %s", summon.CurrentShard, summon.CurrentShardPart)
-	fmt.Println("set the value as: ", summon.ShardMap[summon.CurrentShard][summon.CurrentShardPart])
+
+	smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart].Values[key] = val
+	fmt.Printf("setting value under %s at %s", smn.CurrentShard, smn.CurrentShardPart)
+	fmt.Println("set the value as: ", smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart])
 	return fmt.Sprintf("%s: %v", key, val)
 }
 
-func (summon *Summon) collectShard(key string, name string) string {
-	summon.Shards[key] = append(summon.Shards[key], name)
-	fmt.Println(summon.Shards[key])
+func (smn *Summon) collectShard(key string, name string) string {
+	smn.Shards[key] = append(smn.Shards[key], name)
+	fmt.Println(smn.Shards[key])
 	return key
 }
 
-func (summon *Summon) receive(key string) string {
-	summon.ShardMap[summon.CurrentShard][summon.CurrentShardPart].Values[key] = ""
+func (smn *Summon) receive(key string) string {
+	smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart].Values[key] = ""
 	return key
 }
 
-func (summon *Summon) override(shardPart ShardPart, key string, val string) string {
+func (smn *Summon) override(shardPart ShardPart, key string, val any) string {
+	switch v := val.(type) {
+	case int:
+		val = v
+	}
 	shardPart.Values[key] = val
 	return ""
 }
 
-func (summon *Summon) endShard() string {
-	summon.ShardCounter++
+func (smn *Summon) endShard() string {
+	smn.ShardCounter++
 	return ""
 }
 
-func (summon *Summon) soulGen() string {
-	for shardName, shardVals := range summon.ShardMap {
+func (smn *Summon) soulGen() string {
+	for shardName, shardVals := range smn.ShardMap {
 		fmt.Println(shardName, shardVals)
 		for shardVal, shardFragment := range shardVals {
 			fmt.Println(shardVal, shardFragment)
 			vslGroupName := s.ToLower(shardVal)
-			vslGroup := summon.Vessel[vslGroupName]
-			summon.Vessel[vslGroupName] = append(vslGroup, shardFragment)
+			vslGroup := smn.Vessel[vslGroupName]
+			smn.Vessel[vslGroupName] = append(vslGroup, shardFragment)
 			for fragmentKey, fragmentVal := range shardFragment.Values {
 				fmt.Println(fragmentKey, fragmentVal)
 			}
