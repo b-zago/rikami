@@ -3,10 +3,14 @@ package main
 import (
 	"fmt"
 	"maps"
+	"os"
 	"slices"
 	"strconv"
+	"strings"
 	s "strings"
 )
+
+var ShardReceivePtr = &struct{}{}
 
 type ShardPart map[string]any
 
@@ -19,6 +23,7 @@ type Summon struct {
 	ShardCounter     int
 	BindLabels       []string
 	Vessel           map[string][]ShardPart `yaml:",inline"`
+	EnvVars          map[string]string
 }
 
 func NewSummon() *Summon {
@@ -28,6 +33,7 @@ func NewSummon() *Summon {
 	summon.BindLabels = []string{"runs-on", "name"} // load from config later
 	summon.Vessel = make(map[string][]ShardPart)
 	summon.ShardMap = make(map[string]map[string]ShardPart)
+	summon.EnvVars = make(map[string]string)
 
 	return &summon
 }
@@ -79,7 +85,7 @@ func (smn *Summon) collectShard(key string, name string) string {
 }
 
 func (smn *Summon) receive(key string) string {
-	smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart][key] = ""
+	smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart][key] = ShardReceivePtr
 	return key
 }
 
@@ -95,14 +101,16 @@ func (smn *Summon) endShard() string {
 
 func (smn *Summon) soulGen() string {
 	for shardName, shardVals := range smn.ShardMap {
-		fmt.Println(shardName, shardVals)
 		for shardVal, shardFragment := range shardVals {
-			fmt.Println(shardVal, shardFragment)
 			vslGroupName := s.ToLower(shardVal)
 			vslGroup := smn.Vessel[vslGroupName]
 			smn.Vessel[vslGroupName] = append(vslGroup, shardFragment)
 			for fragmentKey, fragmentVal := range shardFragment {
 				fmt.Println(fragmentKey, fragmentVal)
+				fmt.Println(shardName)
+				// if fragmentVal == ShardReceivePtr {
+				// 	panic(fmt.Sprintf("You need to set %s at %s in %s", fragmentKey, shardVal, shardName))
+				// }
 			}
 		}
 	}
@@ -156,5 +164,42 @@ func (smn *Summon) appendObj(shardPart ShardPart, key string, val any) string {
 			panic("Wrong type")
 		}
 	}
+	return ""
+}
+
+func (smn *Summon) bindParts(key string, targetStr string) string {
+	targetSplit := strings.Split(targetStr, "@")
+	targetVal, ok := smn.ShardMap[smn.CurrentShard][targetSplit[0]][targetSplit[1]]
+	if !ok {
+		panic("Need at least two keys when binding")
+	}
+	for _, v := range targetSplit[1:] {
+		m, ok := targetVal.(ShardPart)
+		if !ok {
+			break // maybe try asserting to list here and try to bind to list element?
+		}
+		next, ok := m[v]
+		if !ok {
+			break
+		}
+		targetVal = next
+	}
+	// instead of writing it now, maybe save it inside some bindRefs and execute with override accordingly basically in a map exactly like a line below. should be ptr:ptrs i guess
+	smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart][key] = targetVal
+	return ""
+}
+
+func (smn *Summon) envMake(path string) string {
+	rawEnvs, err := os.ReadFile(path)
+	check(err)
+	envs := strings.TrimSpace(string(rawEnvs))
+	fmt.Println(envs)
+	lineSplit := strings.Split(envs, "\n")
+	fmt.Println("LINE SPLIT TEST")
+	for _, env := range lineSplit {
+		valSplit := strings.Split(env, "=")
+		smn.EnvVars[valSplit[0]] = valSplit[1]
+	}
+	fmt.Println(smn.EnvVars)
 	return ""
 }

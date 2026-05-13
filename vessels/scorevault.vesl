@@ -1,20 +1,9 @@
-{{- cast "Webserver" "webborino" -}}
-{{- cast "Webserver" "webex" -}}
+{{- cast "Webserver" "webServer" -}}
 {{- cast "Redis" "redis" -}}
 ---
-
-########
-{{ override .webex.Routes "host" "scorevaulting.zagoapps.com" }}
-{{ override .webex.Routes "replicas" 2 }}
-
-{{append .webex.Deployments "data" (map "testappend" "epicko") }}
-{{append .webex.Deployments "data" (map "nested" (map "nested1" "nested1val")) }}
-
-{{append .webex.Deployments.data "nested" (map "nested2" "nested2val") }}
-
-{{append .webex.Deployments "envSecretRefs" (list "listappendtest" "append2") }}
-
-{{override .webex.Deployments "envVars" (list (map "name" "DB_HOST" "value" "scorevault-database-service") (map "name" "REDIS" "value" "scorevault-redis-service"))}}
-{{append .webex.Deployments "envVars" (list (map "name" "appendedenvvar" "value" (list "test1" "test2" "test3")))}}
+{{override .webServer.Routes "host" "scorevaultin.zagoapps.com"}}
+{{override .webServer.Services "targetPort" 8000}}
+{{override .webServer.Deployments "image" "ghcr.io/b-zago/scorevault/webserver:latest"}}
+{{override .webServer.Deployments "runsOn" "python"}}
 {{summon}}
 
