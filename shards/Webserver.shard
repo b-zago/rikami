@@ -10,4 +10,15 @@
 {{set "runs-on" "web-server"}}
 {{set "port" 80}}
 {{set "targetPort" 80}}
+
+{{begin "Deployments"}}
+{{set "name" "web-server"}}
+{{set "image" "ghcr.io/b-zago/scorevault/webserver:latest"}}
+{{set "imagePullSecret" "ghcr-creds"}}
+{{set "runsOn" "python"}}
+{{set "component" "server"}}
+{{set "containerPort" 8000}}
+{{set "envSecretRefs" (list "database-envs" "keys-envs")}}
+{{set "data" (map "HMAC" "blabla" "propeknum" 20 "listewka" (list "xd" "gopherix"))}}
+
 {{seal}}

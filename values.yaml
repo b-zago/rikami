@@ -1,3 +1,50 @@
+deployments:
+  - component: server
+    containerPort: 8000
+    data:
+      HMAC: blabla
+      listewka:
+        - xd
+        - gopherix
+      nested:
+        nested1: nested1val
+        nested2: nested2val
+      propeknum: 20
+      testappend: epicko
+    envSecretRefs:
+      - database-envs
+      - keys-envs
+      - listappendtest
+      - append2
+    envVars:
+      - name: DB_HOST
+        value: scorevault-database-service
+      - name: REDIS
+        value: scorevault-redis-service
+      - name: appendedenvvar
+        value:
+          - test1
+          - test2
+          - test3
+    image: ghcr.io/b-zago/scorevault/webserver:latest
+    imagePullSecret: ghcr-creds
+    name: web-server-1
+    runsOn: python
+  - component: server
+    containerPort: 8000
+    data:
+      HMAC: blabla
+      listewka:
+        - xd
+        - gopherix
+      propeknum: 20
+    envSecretRefs:
+      - database-envs
+      - keys-envs
+    image: ghcr.io/b-zago/scorevault/webserver:latest
+    imagePullSecret: ghcr-creds
+    name: web-server
+    runsOn: python
 routes:
   - host: scorevaulting.zagoapps.com
     name: web-server-route-1

@@ -25,11 +25,16 @@ func main() {
 		"shard":   summon.beginShard,
 		"receive": summon.receive,
 		"seal":    summon.endShard,
+		"list":    summon.makeList,
+		"map":     summon.makeMap,
 	}
 	vesselFuncMap := template.FuncMap{
 		"cast":     summon.collectShard,
 		"summon":   summon.soulGen,
 		"override": summon.override,
+		"append":   summon.appendObj,
+		"list":     summon.makeList,
+		"map":      summon.makeMap,
 	}
 
 	vessel, err := os.ReadFile("vessels/scorevault.vesl")

@@ -2,14 +2,13 @@ package main
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	s "strings"
 )
 
-type ShardPart struct {
-	Values map[string]any `yaml:",inline"`
-}
+type ShardPart map[string]any
 
 type Summon struct {
 	ShardMap         map[string]map[string]ShardPart
@@ -46,7 +45,7 @@ func (smn *Summon) beginShard(key string) string {
 
 func (smn *Summon) beginShardPart(key string) string {
 	smn.CurrentShardPart = key
-	smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart] = ShardPart{Values: make(map[string]any)}
+	smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart] = ShardPart{}
 	fmt.Printf("begin shard part: %s with value: %v\n", key, smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart])
 
 	return key
@@ -62,7 +61,7 @@ func (smn *Summon) setShardVal(key string, val any) string {
 		val = v
 	}
 
-	smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart].Values[key] = val
+	smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart][key] = val
 	fmt.Printf("setting value under %s at %s", smn.CurrentShard, smn.CurrentShardPart)
 	fmt.Println("set the value as: ", smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart])
 	return fmt.Sprintf("%s: %v", key, val)
@@ -75,7 +74,7 @@ func (smn *Summon) collectShard(key string, name string) string {
 }
 
 func (smn *Summon) receive(key string) string {
-	smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart].Values[key] = ""
+	smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart][key] = ""
 	return key
 }
 
@@ -84,7 +83,7 @@ func (smn *Summon) override(shardPart ShardPart, key string, val any) string {
 	case int:
 		val = v
 	}
-	shardPart.Values[key] = val
+	shardPart[key] = val
 	return ""
 }
 
@@ -101,9 +100,59 @@ func (smn *Summon) soulGen() string {
 			vslGroupName := s.ToLower(shardVal)
 			vslGroup := smn.Vessel[vslGroupName]
 			smn.Vessel[vslGroupName] = append(vslGroup, shardFragment)
-			for fragmentKey, fragmentVal := range shardFragment.Values {
+			for fragmentKey, fragmentVal := range shardFragment {
 				fmt.Println(fragmentKey, fragmentVal)
 			}
+		}
+	}
+	return ""
+}
+
+func (smn *Summon) makeList(elements ...any) []any {
+	var newList []any
+	newList = append(newList, elements...)
+	return newList
+}
+
+func (smn *Summon) makeMap(elements ...any) map[string]any {
+	newMap := make(map[string]any)
+	var prevKey string
+	for i, element := range elements {
+		if i%2 == 0 {
+			key, ok := element.(string)
+			if ok {
+				newMap[key] = nil
+				prevKey = key
+			} else {
+				panic("Wrong type")
+			}
+			continue
+		}
+		_, ok := newMap[prevKey]
+		if ok {
+			newMap[prevKey] = element
+		} else {
+			panic("Mismatched key-values in a map generation")
+		}
+	}
+	return newMap
+}
+
+func (smn *Summon) appendObj(shardPart ShardPart, key string, val any) string {
+	switch v := shardPart[key].(type) {
+	case map[string]any:
+		newMap, ok := val.(map[string]any)
+		if ok {
+			maps.Copy(v, newMap)
+		} else {
+			panic("Wrong type") // specify error later
+		}
+	case []any:
+		vList, ok := val.([]any)
+		if ok {
+			shardPart[key] = append(v, vList...)
+		} else {
+			panic("Wrong type")
 		}
 	}
 	return ""
