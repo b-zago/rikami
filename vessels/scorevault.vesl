@@ -1,5 +1,6 @@
 {{- cast "Webserver" "webborino" -}}
 {{- cast "Webserver" "webex" -}}
+{{- cast "Redis" "redis" -}}
 ---
 
 ########

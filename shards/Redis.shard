@@ -1,0 +1,15 @@
+{{shard "Redis"}}
+{{begin "Deployments"}}
+{{set "name" "redis"}}
+{{set "image" "redis:8-alpine"}}
+{{set "runsOn" "redis"}}
+{{set "component" "cache"}}
+{{set "containerPort" 6379}}
+
+{{begin "Services"}}
+{{set "name" "redis-service"}}
+{{set "runsOn" "redis"}}
+{{set "port" 6379}}
+{{set "targetPort" 6379}}
+
+{{seal}}

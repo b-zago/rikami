@@ -6,6 +6,21 @@ deployments:
       listewka:
         - xd
         - gopherix
+      propeknum: 20
+    envSecretRefs:
+      - database-envs
+      - keys-envs
+    image: ghcr.io/b-zago/scorevault/webserver:latest
+    imagePullSecret: ghcr-creds
+    name: web-server
+    runsOn: python
+  - component: server
+    containerPort: 8000
+    data:
+      HMAC: blabla
+      listewka:
+        - xd
+        - gopherix
       nested:
         nested1: nested1val
         nested2: nested2val
@@ -30,35 +45,29 @@ deployments:
     imagePullSecret: ghcr-creds
     name: web-server-1
     runsOn: python
-  - component: server
-    containerPort: 8000
-    data:
-      HMAC: blabla
-      listewka:
-        - xd
-        - gopherix
-      propeknum: 20
-    envSecretRefs:
-      - database-envs
-      - keys-envs
-    image: ghcr.io/b-zago/scorevault/webserver:latest
-    imagePullSecret: ghcr-creds
-    name: web-server
-    runsOn: python
+  - component: cache
+    containerPort: 6379
+    image: redis:8-alpine
+    name: redis
+    runsOn: redis
 routes:
+  - host: ""
+    name: web-server-route
+    runs-on: web-server-service
   - host: scorevaulting.zagoapps.com
     name: web-server-route-1
     replicas: 2
     runs-on: web-server-service-1
-  - host: ""
-    name: web-server-route
-    runs-on: web-server-service
 services:
-  - name: web-server-service-1
-    port: 80
-    runs-on: web-server-1
-    targetPort: 80
   - name: web-server-service
     port: 80
     runs-on: web-server
     targetPort: 80
+  - name: web-server-service-1
+    port: 80
+    runs-on: web-server-1
+    targetPort: 80
+  - name: redis-service
+    port: 6379
+    runsOn: redis
+    targetPort: 6379

@@ -15,6 +15,7 @@ type Summon struct {
 	Shards           map[string][]string
 	CurrentShardPart string
 	CurrentShard     string
+	CurrentShardDef  string
 	ShardCounter     int
 	BindLabels       []string
 	Vessel           map[string][]ShardPart `yaml:",inline"`
@@ -33,10 +34,15 @@ func NewSummon() *Summon {
 
 func (smn *Summon) beginShard(key string) string {
 	// get shards[key] as an global slice and loop over it for every op or MUCH SIMPLIER just have global counter and add {{end}} func (smn *Summon)tion to shards that will increment it
-	shardKey, present := smn.Shards[key]
-	if !present {
+	fmt.Println("trying to begin")
+	fmt.Println(key)
+	if smn.CurrentShardDef != key {
 		smn.ShardCounter = 0
 	}
+	smn.CurrentShardDef = key
+	shardKey := smn.Shards[key]
+
+	fmt.Println(shardKey)
 	smn.CurrentShard = shardKey[smn.ShardCounter]
 	fmt.Println("begin shard:", smn.CurrentShard)
 	smn.ShardMap[smn.CurrentShard] = make(map[string]ShardPart)
@@ -67,7 +73,8 @@ func (smn *Summon) setShardVal(key string, val any) string {
 
 func (smn *Summon) collectShard(key string, name string) string {
 	smn.Shards[key] = append(smn.Shards[key], name)
-	fmt.Println(smn.Shards[key])
+	fmt.Println("collecting")
+	fmt.Println(smn.Shards)
 	return key
 }
 
