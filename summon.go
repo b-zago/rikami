@@ -57,8 +57,6 @@ func (smn *Summon) setShardVal(key string, val any) string {
 		if slices.Contains(smn.BindLabels, key) && smn.ShardCounter > 0 {
 			val = v + "-" + strconv.Itoa(smn.ShardCounter)
 		}
-	case int:
-		val = v
 	}
 
 	smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart][key] = val
@@ -79,10 +77,6 @@ func (smn *Summon) receive(key string) string {
 }
 
 func (smn *Summon) override(shardPart ShardPart, key string, val any) string {
-	switch v := val.(type) {
-	case int:
-		val = v
-	}
 	shardPart[key] = val
 	return ""
 }
