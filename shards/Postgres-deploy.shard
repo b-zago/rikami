@@ -6,12 +6,13 @@
 {{set "port" 5432}}
 {{set "targetPort" 5432}}
 {{set "list" (list "someval1" "otherval")}}
+{{set "list2" (list (map "t1" "t1val" "t2" "t2val") (map "t3" "t3val" "t4" "t4val"))}}
 
 {{begin "Secrets"}}
 {{set "name" "database-envs"}}
 {{bind "runsOnList" "Services@runsOn[]" }}
 {{bind "listTargetTest" "Services@list[1]"}}
-//here can make bind with something like "Services@runsOn[]" when empty brackets refer to return the value as list and when index is specified then return a specific element FROM a list 
+{{bind "listTraversal" "Services@list2[1]@t4[]"}}
 {{receive "data"}}
 
 {{begin "Deployments"}}

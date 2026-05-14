@@ -1,17 +1,11 @@
 {{conf "chart"}}
 ---
 {{- cast "Chart" "chart" -}}
-{{- cast "Webserver" "webServer" -}}
 {{- cast "Redis" "redis" -}}
 {{- cast "Postgres-deploy" "db" -}}
 {{- global "env" "staging" -}}
 ---
-{{override .webServer.Routes "host" "scorevaultin.zagoapps.com"}}
-{{override .webServer.Services "targetPort" 3000}}
-{{override .webServer.Deployments "image" "ghcr.io/b-zago/scorevault/webserver:latest"}}
-{{override .webServer.Deployments "runsOn" "python"}}
-{{override .webServer.Deployments "envVars" (envMake ".env")}}
-{{override .webServer.Deployments "envSecretRefs" (list .db.Secrets.name)}}
+
 
 {{override .db.Secrets "data" (map "sec1" "sec1val" "sec2" "sec2val")}}
 
@@ -19,4 +13,12 @@
 {{override .chart.Main "name" "Scorevaulting"}}
 
 {{summon}}
+---
 
+{{- cast "Webserver" "webServer" -}}
+{{override .webServer.Routes "host" "scorevaultin.zagoapps.com"}}
+{{override .webServer.Services "targetPort" 3000}}
+{{override .webServer.Deployments "image" "ghcr.io/b-zago/scorevault/webserver:latest"}}
+{{override .webServer.Deployments "runsOn" "python"}}
+{{override .webServer.Deployments "envVars" (envMake ".env")}}
+{{override .webServer.Deployments "envSecretRefs" (list .db.Secrets.name)}}

@@ -68,17 +68,15 @@ func main() {
 	for key, val := range summon.Shards {
 		shard, err := os.ReadFile(fmt.Sprintf("shards/%s.shard", key))
 		check(err)
-		fmt.Println(string(shard))
 		shardString := string(shard)
 		for _, definedName := range val {
-			fmt.Println(key, definedName)
 			shardTmpl := template.Must(template.New(definedName).Funcs(shardFuncMap).Parse(shardString))
 			err = shardTmpl.Execute(io.Discard, nil)
 			check(err)
 		}
 	}
-	fmt.Println("shards map:", summon.Shards)
-	fmt.Println("-----------------------")
+	// fmt.Println("shards map:", summon.Shards)
+	// fmt.Println("-----------------------")
 	err = vesselTraitsTmpl.Execute(io.Discard, summon.ShardMap)
 	check(err)
 

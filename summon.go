@@ -19,6 +19,7 @@ type BindRef struct {
 	Part       string
 	Key        string
 	TargetPath []string
+	IndexMap   map[int]int
 }
 
 type Summon struct {
@@ -50,18 +51,15 @@ func NewSummon() *Summon {
 }
 
 func (smn *Summon) beginShard(key string) string {
-	// get shards[key] as an global slice and loop over it for every op or MUCH SIMPLIER just have global counter and add {{end}} func (smn *Summon)tion to shards that will increment it
-	fmt.Println("trying to begin")
-	fmt.Println(key)
+	// fmt.Println("trying to begin")
 	if smn.CurrentShardDef != key {
 		smn.ShardCounter = 0
 	}
 	smn.CurrentShardDef = key
 	shardKey := smn.Shards[key]
 
-	fmt.Println(shardKey)
 	smn.CurrentShard = shardKey[smn.ShardCounter]
-	fmt.Println("begin shard:", smn.CurrentShard)
+	// fmt.Println("begin shard:", smn.CurrentShard)
 	smn.ShardMap[smn.CurrentShard] = make(map[string]map[string]any)
 	return key
 }
@@ -69,7 +67,7 @@ func (smn *Summon) beginShard(key string) string {
 func (smn *Summon) beginShardPart(key string) string {
 	smn.CurrentShardPart = key
 	smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart] = make(map[string]any)
-	fmt.Printf("begin shard part: %s with value: %v\n", key, smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart])
+	// fmt.Printf("begin shard part: %s with value: %v\n", key, smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart])
 
 	return key
 }
@@ -83,15 +81,13 @@ func (smn *Summon) setShardVal(key string, val any) string {
 	}
 
 	smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart][key] = val
-	fmt.Printf("setting value under %s at %s", smn.CurrentShard, smn.CurrentShardPart)
-	fmt.Println("set the value as: ", smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart])
+	// fmt.Printf("setting value under %s at %s", smn.CurrentShard, smn.CurrentShardPart)
+	// fmt.Println("set the value as: ", smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart])
 	return fmt.Sprintf("%s: %v", key, val)
 }
 
 func (smn *Summon) collectShard(key string, name string) string {
 	smn.Shards[key] = append(smn.Shards[key], name)
-	fmt.Println("collecting")
-	fmt.Println(smn.Shards)
 	return key
 }
 
@@ -120,39 +116,51 @@ func (smn *Summon) soulGen() string {
 		}
 		var sender any = part
 
-		for _, p := range ref.TargetPath[1 : len(ref.TargetPath)-1] {
+		for i, p := range ref.TargetPath[1 : len(ref.TargetPath)-1] {
+
 			v, ok := sender.(map[string]any)
 			if !ok {
-				break
+				panic("stop right there citizen")
 			}
-			next, ok := v[p]
-			if !ok {
-				break
+			fmt.Println(sender, "sender")
+			inx, ok := ref.IndexMap[i+1]
+
+			if ok {
+				list := v[p]
+				n, ok := list.([]any)
+				if !ok {
+					panic("stop right there citizen")
+				}
+				sender = n[inx]
+			} else {
+
+				next, ok := v[p]
+				if !ok {
+					panic("stop right there citizen")
+				}
+				sender = next
+
+				fmt.Println(sender, "sender end")
 			}
-			sender = next
 		}
 
 		last := ref.TargetPath[len(ref.TargetPath)-1]
 		if strings.HasSuffix(last, "]") {
-			valSplit := strings.Split(last, "[")
-			if len(valSplit) == 1 || len(valSplit) >= 3 {
-				panic("Something is wrong with list bind on checking len")
-			}
-			last = valSplit[0]
-			index := strings.TrimSuffix(valSplit[1], "]")
-			if len(index) == 0 {
-				finalVal := []any{sender.(map[string]any)[last]}
+
+			index, lastClean, noIndex := extractIndex(last)
+			if noIndex {
+
+				finalVal := []any{sender.(map[string]any)[lastClean]}
 				smn.ShardMap[ref.Shard][ref.Part][ref.Key] = finalVal
 			} else {
-				finalList := sender.(map[string]any)[last]
+
+				finalList := sender.(map[string]any)[lastClean]
 				assertVal, ok := finalList.([]any)
-				indexNum, err := strconv.Atoi(index)
-				check(err)
 				if !ok {
 					fmt.Println(last, sender)
 					panic("Something is wrong with list bind on type assertion")
 				}
-				finalVal := assertVal[indexNum]
+				finalVal := assertVal[index]
 				smn.ShardMap[ref.Shard][ref.Part][ref.Key] = finalVal
 			}
 		} else {
@@ -227,13 +235,44 @@ func (smn *Summon) appendObj(shardPart map[string]any, key string, val any) stri
 	return ""
 }
 
+func extractIndex(rawStr string) (int, string, bool) {
+	valSplit := strings.Split(rawStr, "[")
+	cleanString := valSplit[0]
+	if len(valSplit) == 1 || len(valSplit) >= 3 {
+		panic("Something is wrong with list bind on checking len")
+	}
+	index := strings.TrimSuffix(valSplit[1], "]")
+	if len(index) == 0 {
+		return -1, cleanString, true
+	} else {
+		indexNum, err := strconv.Atoi(index)
+		check(err)
+		return indexNum, cleanString, false
+	}
+}
+
 func (smn *Summon) bindParts(key string, targetStr string) string {
 	targetSplit := strings.Split(targetStr, "@")
 	_, ok := smn.ShardMap[smn.CurrentShard][targetSplit[0]]
 	if !ok {
 		panic("Wrong target to bind to")
 	}
-	smn.BindRefs = append(smn.BindRefs, BindRef{Shard: smn.CurrentShard, Part: smn.CurrentShardPart, Key: key, TargetPath: targetSplit})
+
+	indexMap := make(map[int]int)
+
+	var noIndex bool
+	for i, v := range targetSplit[1 : len(targetSplit)-1] {
+		if strings.HasSuffix(v, "]") {
+			inx := i + 1
+			indexMap[inx], targetSplit[inx], noIndex = extractIndex(v)
+			if noIndex {
+				panic("Index not provided in a list")
+			}
+		}
+	}
+	fmt.Println(targetSplit, "targetto splitto firsto")
+	fmt.Println(indexMap)
+	smn.BindRefs = append(smn.BindRefs, BindRef{Shard: smn.CurrentShard, Part: smn.CurrentShardPart, Key: key, TargetPath: targetSplit, IndexMap: indexMap})
 	//smn.SgardMap[smn.CurrentShard][smn.CurrentShardPart][key] = targetVal
 	return ""
 }
