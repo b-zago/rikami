@@ -5,10 +5,12 @@
 {{set "runsOn" "database"}}
 {{set "port" 5432}}
 {{set "targetPort" 5432}}
+{{set "list" (list "someval1" "otherval")}}
 
 {{begin "Secrets"}}
 {{set "name" "database-envs"}}
-{{set "runsOnList" (list "database")}}
+{{bind "runsOnList" "Services@runsOn[]" }}
+{{bind "listTargetTest" "Services@list[1]"}}
 //here can make bind with something like "Services@runsOn[]" when empty brackets refer to return the value as list and when index is specified then return a specific element FROM a list 
 {{receive "data"}}
 

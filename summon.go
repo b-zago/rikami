@@ -133,7 +133,31 @@ func (smn *Summon) soulGen() string {
 		}
 
 		last := ref.TargetPath[len(ref.TargetPath)-1]
-		smn.ShardMap[ref.Shard][ref.Part][ref.Key] = sender.(map[string]any)[last]
+		if strings.HasSuffix(last, "]") {
+			valSplit := strings.Split(last, "[")
+			if len(valSplit) == 1 || len(valSplit) >= 3 {
+				panic("Something is wrong with list bind on checking len")
+			}
+			last = valSplit[0]
+			index := strings.TrimSuffix(valSplit[1], "]")
+			if len(index) == 0 {
+				finalVal := []any{sender.(map[string]any)[last]}
+				smn.ShardMap[ref.Shard][ref.Part][ref.Key] = finalVal
+			} else {
+				finalList := sender.(map[string]any)[last]
+				assertVal, ok := finalList.([]any)
+				indexNum, err := strconv.Atoi(index)
+				check(err)
+				if !ok {
+					fmt.Println(last, sender)
+					panic("Something is wrong with list bind on type assertion")
+				}
+				finalVal := assertVal[indexNum]
+				smn.ShardMap[ref.Shard][ref.Part][ref.Key] = finalVal
+			}
+		} else {
+			smn.ShardMap[ref.Shard][ref.Part][ref.Key] = sender.(map[string]any)[last]
+		}
 	}
 	for shardName, shardVals := range smn.ShardMap {
 		for shardVal, shardFragment := range shardVals {

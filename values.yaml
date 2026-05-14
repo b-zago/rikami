@@ -1,6 +1,11 @@
 env: staging
 ---
 deployments:
+  - component: database
+    envSecretRef: database-envs
+    image: postgres:18-alpine
+    name: database
+    runsOn: postgres
   - component: server
     containerPort: 3000
     envSecretRefs:
@@ -19,11 +24,6 @@ deployments:
     image: redis:8-alpine
     name: redis
     runsOn: redis
-  - component: database
-    envSecretRef: database-envs
-    image: postgres:18-alpine
-    name: database
-    runsOn: postgres
 routes:
   - host: scorevaultin.zagoapps.com
     name: web-server-route
@@ -32,10 +32,18 @@ secrets:
   - data:
       sec1: sec1val
       sec2: sec2val
+    listTargetTest: otherval
     name: database-envs
     runsOnList:
       - database
 services:
+  - list:
+      - someval1
+      - otherval
+    name: database-service
+    port: 5432
+    runsOn: database
+    targetPort: 5432
   - name: web-server-service
     port: 80
     runs-on: web-server
@@ -44,7 +52,3 @@ services:
     port: 6379
     runsOn: redis
     targetPort: 6379
-  - name: database-service
-    port: 5432
-    runsOn: database
-    targetPort: 5432
