@@ -7,7 +7,7 @@
 ---
 
 
-{{override .db.Secrets "data" (map "sec1" "sec1val" "sec2" "sec2val")}}
+{{override .db.Secrets "data" (secMake ".env.secret" .Globals.Values.env .db.Secrets.name)}}
 
 {{override .chart.Main "description" "Scorevaulting test app"}}
 {{override .chart.Main "name" "Scorevaulting"}}

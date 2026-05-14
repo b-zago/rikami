@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"maps"
 	"os"
+	"os/exec"
 	"slices"
 	"strconv"
 	"strings"
@@ -33,7 +35,7 @@ type Summon struct {
 	Vessel           map[string][]map[string]any `yaml:",inline"`
 	EnvVars          map[string]string
 	BindRefs         []BindRef
-	Globals          map[string]string
+	Globals          map[string]any
 	ConfShards       []string
 }
 
@@ -45,7 +47,7 @@ func NewSummon() *Summon {
 	summon.Vessel = make(map[string][]map[string]any)
 	summon.ShardMap = make(map[string]map[string]map[string]any)
 	summon.EnvVars = make(map[string]string)
-	summon.Globals = make(map[string]string)
+	summon.Globals = make(map[string]any)
 
 	return &summon
 }
@@ -169,7 +171,7 @@ func (smn *Summon) soulGen() string {
 	}
 	for shardName, shardVals := range smn.ShardMap {
 		for shardVal, shardFragment := range shardVals {
-			if !slices.Contains(smn.ConfShards, shardName) {
+			if !slices.Contains(smn.ConfShards, shardName) && shardName != "Globals" {
 				vslGroupName := s.ToLower(shardVal)
 				vslGroup := smn.Vessel[vslGroupName]
 				smn.Vessel[vslGroupName] = append(vslGroup, shardFragment)
@@ -270,8 +272,8 @@ func (smn *Summon) bindParts(key string, targetStr string) string {
 			}
 		}
 	}
-	fmt.Println(targetSplit, "targetto splitto firsto")
-	fmt.Println(indexMap)
+	// fmt.Println(targetSplit, "targetto splitto firsto")
+	// fmt.Println(indexMap)
 	smn.BindRefs = append(smn.BindRefs, BindRef{Shard: smn.CurrentShard, Part: smn.CurrentShardPart, Key: key, TargetPath: targetSplit, IndexMap: indexMap})
 	//smn.SgardMap[smn.CurrentShard][smn.CurrentShardPart][key] = targetVal
 	return ""
@@ -282,8 +284,13 @@ func (smn *Summon) partMake(shard map[string]map[string]any, part string) string
 	return ""
 }
 
-func (smn *Summon) globalSet(key string, val string) string {
+func (smn *Summon) globalSet(key string, val any) string {
+	_, ok := smn.ShardMap["Globals"]["Values"]
+	if !ok {
+		smn.ShardMap["Globals"] = make(map[string]map[string]any)
+	}
 	smn.Globals[key] = val
+	smn.ShardMap["Globals"]["Values"] = smn.Globals
 	return ""
 }
 
@@ -292,14 +299,25 @@ func (smn *Summon) confAdd(name string) string {
 	return ""
 }
 
-func (smn *Summon) secMake(path string) string {
+func SecMake(path string, ns string, name string) map[string]string {
 	envLoad := EnvMake(path)
 	secMap := make(map[string]string)
 
 	for _, env := range envLoad {
-		secMap[env["name"]] = env["value"]
+		ksCmd := exec.Command("kubeseal", "--raw", "--namespace", ns, "--name", name)
+		ksIn, _ := ksCmd.StdinPipe()
+		ksOut, _ := ksCmd.StdoutPipe()
+		err := ksCmd.Start()
+		check(err)
+		_, err = ksIn.Write([]byte(env["value"]))
+		check(err)
+		ksIn.Close()
+		ksBytes, _ := io.ReadAll(ksOut)
+		err = ksCmd.Wait()
+		check(err)
+		secMap[env["name"]] = string(ksBytes)
 	}
-	return ""
+	return secMap
 }
 
 func EnvMake(path string) []map[string]string {
