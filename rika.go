@@ -58,7 +58,6 @@ func main() {
 		fmt.Println(string(shard))
 		shardString := string(shard)
 		for _, definedName := range val {
-			fmt.Println("BRAK")
 			fmt.Println(key, definedName)
 			shardTmpl := template.Must(template.New(definedName).Funcs(shardFuncMap).Parse(shardString))
 			err = shardTmpl.Execute(io.Discard, nil)

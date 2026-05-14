@@ -14,8 +14,17 @@ var ShardReceivePtr = &struct{}{}
 
 type ShardPart map[string]any
 
+type ShardMapType map[string]map[string]ShardPart
+
+type BindRef struct {
+	Shard      string
+	Part       string
+	Key        string
+	TargetPath []string
+}
+
 type Summon struct {
-	ShardMap         map[string]map[string]ShardPart
+	ShardMap         ShardMapType
 	Shards           map[string][]string
 	CurrentShardPart string
 	CurrentShard     string
@@ -24,6 +33,7 @@ type Summon struct {
 	BindLabels       []string
 	Vessel           map[string][]ShardPart `yaml:",inline"`
 	EnvVars          map[string]string
+	BindRefs         []BindRef
 }
 
 func NewSummon() *Summon {
@@ -100,6 +110,33 @@ func (smn *Summon) endShard() string {
 }
 
 func (smn *Summon) soulGen() string {
+	for _, ref := range smn.BindRefs {
+		var sender any = smn.ShardMap[ref.Shard]
+		fmt.Println(ref.TargetPath)
+		success := true
+		for _, p := range ref.TargetPath[:len(ref.TargetPath)-1] {
+			v, ok := sender.(map[string]ShardPart)
+			fmt.Println("eoeoeoeoeoeoeeoeoeoeoeoeeooeoeoo")
+			fmt.Println(v)
+			if !ok {
+				success = false
+				break // maybe check for lists here also
+			}
+			m, ok := v[p]
+			fmt.Println(m)
+			if !ok {
+				success = false
+				break
+			}
+			sender = m
+		}
+		if success {
+			fmt.Println("done????")
+			smn.ShardMap[ref.Shard][ref.Part][ref.Key] = sender.(ShardPart)[ref.TargetPath[len(ref.TargetPath)-1]]
+		} else {
+			panic("Something went wrong when binding values in shard") // specify shard later
+		}
+	}
 	for shardName, shardVals := range smn.ShardMap {
 		for shardVal, shardFragment := range shardVals {
 			vslGroupName := s.ToLower(shardVal)
@@ -108,12 +145,14 @@ func (smn *Summon) soulGen() string {
 			for fragmentKey, fragmentVal := range shardFragment {
 				fmt.Println(fragmentKey, fragmentVal)
 				fmt.Println(shardName)
+
 				// if fragmentVal == ShardReceivePtr {
 				// 	panic(fmt.Sprintf("You need to set %s at %s in %s", fragmentKey, shardVal, shardName))
 				// }
 			}
 		}
 	}
+
 	return ""
 }
 
@@ -169,23 +208,12 @@ func (smn *Summon) appendObj(shardPart ShardPart, key string, val any) string {
 
 func (smn *Summon) bindParts(key string, targetStr string) string {
 	targetSplit := strings.Split(targetStr, "@")
-	targetVal, ok := smn.ShardMap[smn.CurrentShard][targetSplit[0]][targetSplit[1]]
+	_, ok := smn.ShardMap[smn.CurrentShard][targetSplit[0]]
 	if !ok {
-		panic("Need at least two keys when binding")
+		panic("Wrong target to bind to")
 	}
-	for _, v := range targetSplit[1:] {
-		m, ok := targetVal.(ShardPart)
-		if !ok {
-			break // maybe try asserting to list here and try to bind to list element?
-		}
-		next, ok := m[v]
-		if !ok {
-			break
-		}
-		targetVal = next
-	}
-	// instead of writing it now, maybe save it inside some bindRefs and execute with override accordingly basically in a map exactly like a line below. should be ptr:ptrs i guess
-	smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart][key] = targetVal
+	smn.BindRefs = append(smn.BindRefs, BindRef{Shard: smn.CurrentShard, Part: smn.CurrentShardPart, Key: key, TargetPath: targetSplit})
+	//smn.SgardMap[smn.CurrentShard][smn.CurrentShardPart][key] = targetVal
 	return ""
 }
 

@@ -2,7 +2,7 @@
 {{- cast "Redis" "redis" -}}
 ---
 {{override .webServer.Routes "host" "scorevaultin.zagoapps.com"}}
-{{override .webServer.Services "targetPort" 8000}}
+{{override .webServer.Services "targetPort" 3000}}
 {{override .webServer.Deployments "image" "ghcr.io/b-zago/scorevault/webserver:latest"}}
 {{override .webServer.Deployments "runsOn" "python"}}
 {{summon}}

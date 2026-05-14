@@ -1,11 +1,12 @@
 deployments:
-  - component: cache
+  - bindedMapValue: null
+    component: cache
     containerPort: 6379
     image: redis:8-alpine
     name: redis
     runsOn: redis
   - component: server
-    containerPort: 3213
+    containerPort: 3000
     image: ghcr.io/b-zago/scorevault/webserver:latest
     imagePullSecret: ghcr-creds
     name: web-server
@@ -15,11 +16,14 @@ routes:
     name: web-server-route
     runs-on: web-server-service
 services:
-  - name: redis-service
+  - custom:
+      custom1: custom1val
+      custom2: custom2val
+    name: redis-service
     port: 6379
     runsOn: redis
     targetPort: 6379
   - name: web-server-service
     port: 80
     runs-on: web-server
-    targetPort: 8000
+    targetPort: 3000
