@@ -12,9 +12,7 @@ import (
 
 var ShardReceivePtr = &struct{}{}
 
-type ShardPart map[string]any
-
-type ShardMapType map[string]map[string]ShardPart
+type ShardMapType map[string]map[string]map[string]any
 
 type BindRef struct {
 	Shard      string
@@ -31,7 +29,7 @@ type Summon struct {
 	CurrentShardDef  string
 	ShardCounter     int
 	BindLabels       []string
-	Vessel           map[string][]ShardPart `yaml:",inline"`
+	Vessel           map[string][]map[string]any `yaml:",inline"`
 	EnvVars          map[string]string
 	BindRefs         []BindRef
 }
@@ -41,8 +39,8 @@ func NewSummon() *Summon {
 	summon.Shards = make(map[string][]string)
 	summon.ShardCounter = 0
 	summon.BindLabels = []string{"runs-on", "name"} // load from config later
-	summon.Vessel = make(map[string][]ShardPart)
-	summon.ShardMap = make(map[string]map[string]ShardPart)
+	summon.Vessel = make(map[string][]map[string]any)
+	summon.ShardMap = make(map[string]map[string]map[string]any)
 	summon.EnvVars = make(map[string]string)
 
 	return &summon
@@ -61,13 +59,13 @@ func (smn *Summon) beginShard(key string) string {
 	fmt.Println(shardKey)
 	smn.CurrentShard = shardKey[smn.ShardCounter]
 	fmt.Println("begin shard:", smn.CurrentShard)
-	smn.ShardMap[smn.CurrentShard] = make(map[string]ShardPart)
+	smn.ShardMap[smn.CurrentShard] = make(map[string]map[string]any)
 	return key
 }
 
 func (smn *Summon) beginShardPart(key string) string {
 	smn.CurrentShardPart = key
-	smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart] = ShardPart{}
+	smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart] = make(map[string]any)
 	fmt.Printf("begin shard part: %s with value: %v\n", key, smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart])
 
 	return key
@@ -99,7 +97,7 @@ func (smn *Summon) receive(key string) string {
 	return key
 }
 
-func (smn *Summon) override(shardPart ShardPart, key string, val any) string {
+func (smn *Summon) override(shardPart map[string]any, key string, val any) string {
 	shardPart[key] = val
 	return ""
 }
@@ -111,31 +109,28 @@ func (smn *Summon) endShard() string {
 
 func (smn *Summon) soulGen() string {
 	for _, ref := range smn.BindRefs {
-		var sender any = smn.ShardMap[ref.Shard]
-		fmt.Println(ref.TargetPath)
-		success := true
-		for _, p := range ref.TargetPath[:len(ref.TargetPath)-1] {
-			v, ok := sender.(map[string]ShardPart)
-			fmt.Println("eoeoeoeoeoeoeeoeoeoeoeoeeooeoeoo")
-			fmt.Println(v)
+		shard := smn.ShardMap[ref.Shard]
+		firstKey := ref.TargetPath[0]
+		part, ok := shard[firstKey]
+		if !ok {
+			panic("Something went wrong while binding")
+		}
+		var sender any = part
+
+		for _, p := range ref.TargetPath[1 : len(ref.TargetPath)-1] {
+			v, ok := sender.(map[string]any)
 			if !ok {
-				success = false
-				break // maybe check for lists here also
-			}
-			m, ok := v[p]
-			fmt.Println(m)
-			if !ok {
-				success = false
 				break
 			}
-			sender = m
+			next, ok := v[p]
+			if !ok {
+				break
+			}
+			sender = next
 		}
-		if success {
-			fmt.Println("done????")
-			smn.ShardMap[ref.Shard][ref.Part][ref.Key] = sender.(ShardPart)[ref.TargetPath[len(ref.TargetPath)-1]]
-		} else {
-			panic("Something went wrong when binding values in shard") // specify shard later
-		}
+
+		last := ref.TargetPath[len(ref.TargetPath)-1]
+		smn.ShardMap[ref.Shard][ref.Part][ref.Key] = sender.(map[string]any)[last]
 	}
 	for shardName, shardVals := range smn.ShardMap {
 		for shardVal, shardFragment := range shardVals {
@@ -186,7 +181,7 @@ func (smn *Summon) makeMap(elements ...any) map[string]any {
 	return newMap
 }
 
-func (smn *Summon) appendObj(shardPart ShardPart, key string, val any) string {
+func (smn *Summon) appendObj(shardPart map[string]any, key string, val any) string {
 	switch v := shardPart[key].(type) {
 	case map[string]any:
 		newMap, ok := val.(map[string]any)

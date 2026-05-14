@@ -1,5 +1,5 @@
 deployments:
-  - bindedMapValue: null
+  - bindedMapValue: custom1val
     component: cache
     containerPort: 6379
     image: redis:8-alpine
