@@ -40,16 +40,27 @@ func main() {
 		"partMake": summon.partMake,
 		"envMake":  EnvMake,
 		"global":   summon.globalSet,
+		"conf":     summon.confAdd,
 	}
 
 	vessel, err := os.ReadFile("vessels/scorevault.vesl")
 	check(err)
 
 	vesselSlice := s.Split(string(vessel), "---")
-	vesselShards := vesselSlice[0]
-	vesselTraits := vesselSlice[1]
+	var vesselConfs string
+	vesselPartJump := 0
+	if len(vesselSlice) > 2 {
+		vesselConfs = vesselSlice[0]
+		vesselPartJump = 1
+	}
+	vesselShards := vesselSlice[vesselPartJump]
+	vesselTraits := vesselSlice[vesselPartJump+1]
 	vesselShardsTmpl := template.Must(template.New("scorevault-shards").Funcs(vesselFuncMap).Parse(vesselShards))
 	vesselTraitsTmpl := template.Must(template.New("scorevault-traits").Funcs(vesselFuncMap).Parse(vesselTraits))
+	vesselConfsTmpl := template.Must(template.New("vessel-config").Funcs(vesselFuncMap).Parse(vesselConfs))
+
+	err = vesselConfsTmpl.Execute(io.Discard, nil)
+	check(err)
 
 	err = vesselShardsTmpl.Execute(io.Discard, nil)
 	check(err)
@@ -83,4 +94,13 @@ func main() {
 	check(enc.Encode(summon.Vessel))
 	enc.Close()
 	check(os.WriteFile("values.yaml", buf.Bytes(), 0644))
+
+	buf.Reset()
+
+	for _, conf := range summon.ConfShards {
+		check(enc.Encode(summon.ShardMap[conf]["Main"]))
+		filename := fmt.Sprintf("%s.yaml", conf)
+		check(os.WriteFile(filename, buf.Bytes(), 0644))
+		buf.Reset()
+	}
 }

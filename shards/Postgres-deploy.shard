@@ -18,3 +18,4 @@
 {{set "runsOn" "postgres"}}
 {{set "component" "database"}}
 {{bind "envSecretRef" "Secrets@name"}}
+{{seal}}

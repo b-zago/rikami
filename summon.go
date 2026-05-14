@@ -33,6 +33,7 @@ type Summon struct {
 	EnvVars          map[string]string
 	BindRefs         []BindRef
 	Globals          map[string]string
+	ConfShards       []string
 }
 
 func NewSummon() *Summon {
@@ -136,16 +137,15 @@ func (smn *Summon) soulGen() string {
 	}
 	for shardName, shardVals := range smn.ShardMap {
 		for shardVal, shardFragment := range shardVals {
-			vslGroupName := s.ToLower(shardVal)
-			vslGroup := smn.Vessel[vslGroupName]
-			smn.Vessel[vslGroupName] = append(vslGroup, shardFragment)
+			if !slices.Contains(smn.ConfShards, shardName) {
+				vslGroupName := s.ToLower(shardVal)
+				vslGroup := smn.Vessel[vslGroupName]
+				smn.Vessel[vslGroupName] = append(vslGroup, shardFragment)
+			}
 			for fragmentKey, fragmentVal := range shardFragment {
-				fmt.Println(fragmentKey, fragmentVal)
-				fmt.Println(shardName)
-
-				// if fragmentVal == ShardReceivePtr {
-				// 	panic(fmt.Sprintf("You need to set %s at %s in %s", fragmentKey, shardVal, shardName))
-				// }
+				if fragmentVal == ShardReceivePtr {
+					panic(fmt.Sprintf("You need to set %s at %s in %s", fragmentKey, shardVal, shardName))
+				}
 			}
 		}
 	}
@@ -224,6 +224,11 @@ func (smn *Summon) globalSet(key string, val string) string {
 	return ""
 }
 
+func (smn *Summon) confAdd(name string) string {
+	smn.ConfShards = append(smn.ConfShards, name)
+	return ""
+}
+
 func (smn *Summon) secMake(path string) string {
 	envLoad := EnvMake(path)
 	secMap := make(map[string]string)
@@ -238,9 +243,7 @@ func EnvMake(path string) []map[string]string {
 	rawEnvs, err := os.ReadFile(path)
 	check(err)
 	envs := strings.TrimSpace(string(rawEnvs))
-	fmt.Println(envs)
 	lineSplit := strings.Split(envs, "\n")
-	fmt.Println("LINE SPLIT TEST")
 	var list []map[string]string
 	for _, env := range lineSplit {
 		valSplit := strings.Split(env, "=")
@@ -249,6 +252,5 @@ func EnvMake(path string) []map[string]string {
 		m["value"] = valSplit[1]
 		list = append(list, m)
 	}
-	fmt.Println(list)
 	return list
 }
