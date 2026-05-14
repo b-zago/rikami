@@ -1,10 +1,14 @@
 {{- cast "Webserver" "webServer" -}}
 {{- cast "Redis" "redis" -}}
+{{- cast "Postgres-deploy" "db" -}}
+{{- global "env" "staging" -}}
 ---
 {{override .webServer.Routes "host" "scorevaultin.zagoapps.com"}}
 {{override .webServer.Services "targetPort" 3000}}
 {{override .webServer.Deployments "image" "ghcr.io/b-zago/scorevault/webserver:latest"}}
 {{override .webServer.Deployments "runsOn" "python"}}
 {{override .webServer.Deployments "envVars" (envMake ".env")}}
+{{override .webServer.Deployments "envSecretRefs" (list .db.Secrets.name)}}
+
 {{summon}}
 

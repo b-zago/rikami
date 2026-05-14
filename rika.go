@@ -37,7 +37,9 @@ func main() {
 		"append":   summon.appendObj,
 		"list":     summon.makeList,
 		"map":      summon.makeMap,
+		"partMake": summon.partMake,
 		"envMake":  EnvMake,
+		"global":   summon.globalSet,
 	}
 
 	vessel, err := os.ReadFile("vessels/scorevault.vesl")
@@ -77,6 +79,7 @@ func main() {
 
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf, yaml.Indent(2), yaml.IndentSequence(true))
+	check(enc.Encode(summon.Globals))
 	check(enc.Encode(summon.Vessel))
 	enc.Close()
 	check(os.WriteFile("values.yaml", buf.Bytes(), 0644))

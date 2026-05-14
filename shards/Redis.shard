@@ -5,7 +5,6 @@
 {{set "runsOn" "redis"}}
 {{set "port" 6379}}
 {{set "targetPort" 6379}}
-{{set "custom" (map "custom1" "custom1val" "custom2" "custom2val")}}
 
 {{begin "Deployments"}}
 {{set "name" "redis"}}
@@ -13,6 +12,5 @@
 {{set "runsOn" "redis"}}
 {{set "component" "cache"}}
 {{bind "containerPort" "Services@targetPort"}}
-{{bind "bindedMapValue" "Services@custom@custom1"}}
 
 {{seal}}

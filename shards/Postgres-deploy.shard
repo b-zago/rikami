@@ -1,0 +1,20 @@
+{{shard "Postgres-deploy"}}
+
+{{begin "Services"}}
+{{set "name" "database-service"}}
+{{set "runsOn" "database"}}
+{{set "port" 5432}}
+{{set "targetPort" 5432}}
+
+{{begin "Secrets"}}
+{{set "name" "database-envs"}}
+{{set "runsOnList" (list "database")}}
+//here can make bind with something like "Services@runsOn[]" when empty brackets refer to return the value as list and when index is specified then return a specific element FROM a list 
+{{receive "data"}}
+
+{{begin "Deployments"}}
+{{set "name" "database"}}
+{{set "image" "postgres:18-alpine"}}
+{{set "runsOn" "postgres"}}
+{{set "component" "database"}}
+{{bind "envSecretRef" "Secrets@name"}}

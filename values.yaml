@@ -1,6 +1,15 @@
+env: staging
+---
 deployments:
+  - component: database
+    envSecretRef: database-envs
+    image: postgres:18-alpine
+    name: database
+    runsOn: postgres
   - component: server
     containerPort: 3000
+    envSecretRefs:
+      - database-envs
     envVars:
       - name: DB_HOST
         value: scorevault-database-service
@@ -10,8 +19,7 @@ deployments:
     imagePullSecret: ghcr-creds
     name: web-server
     runsOn: python
-  - bindedMapValue: custom1val
-    component: cache
+  - component: cache
     containerPort: 6379
     image: redis:8-alpine
     name: redis
@@ -20,15 +28,21 @@ routes:
   - host: scorevaultin.zagoapps.com
     name: web-server-route
     runs-on: web-server-service
+secrets:
+  - data: {}
+    name: database-envs
+    runsOnList:
+      - database
 services:
+  - name: database-service
+    port: 5432
+    runsOn: database
+    targetPort: 5432
   - name: web-server-service
     port: 80
     runs-on: web-server
     targetPort: 3000
-  - custom:
-      custom1: custom1val
-      custom2: custom2val
-    name: redis-service
+  - name: redis-service
     port: 6379
     runsOn: redis
     targetPort: 6379

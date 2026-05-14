@@ -32,6 +32,7 @@ type Summon struct {
 	Vessel           map[string][]map[string]any `yaml:",inline"`
 	EnvVars          map[string]string
 	BindRefs         []BindRef
+	Globals          map[string]string
 }
 
 func NewSummon() *Summon {
@@ -42,6 +43,7 @@ func NewSummon() *Summon {
 	summon.Vessel = make(map[string][]map[string]any)
 	summon.ShardMap = make(map[string]map[string]map[string]any)
 	summon.EnvVars = make(map[string]string)
+	summon.Globals = make(map[string]string)
 
 	return &summon
 }
@@ -209,6 +211,26 @@ func (smn *Summon) bindParts(key string, targetStr string) string {
 	}
 	smn.BindRefs = append(smn.BindRefs, BindRef{Shard: smn.CurrentShard, Part: smn.CurrentShardPart, Key: key, TargetPath: targetSplit})
 	//smn.SgardMap[smn.CurrentShard][smn.CurrentShardPart][key] = targetVal
+	return ""
+}
+
+func (smn *Summon) partMake(shard map[string]map[string]any, part string) string {
+	shard[part] = make(map[string]any)
+	return ""
+}
+
+func (smn *Summon) globalSet(key string, val string) string {
+	smn.Globals[key] = val
+	return ""
+}
+
+func (smn *Summon) secMake(path string) string {
+	envLoad := EnvMake(path)
+	secMap := make(map[string]string)
+
+	for _, env := range envLoad {
+		secMap[env["name"]] = env["value"]
+	}
 	return ""
 }
 
