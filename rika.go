@@ -27,7 +27,7 @@ func main() {
 		"seal":    summon.endShard,
 		"list":    summon.makeList,
 		"map":     summon.makeMap,
-		"envMake": summon.envMake,
+		"envMake": EnvMake,
 		"bind":    summon.bindParts,
 	}
 	vesselFuncMap := template.FuncMap{
@@ -37,7 +37,7 @@ func main() {
 		"append":   summon.appendObj,
 		"list":     summon.makeList,
 		"map":      summon.makeMap,
-		"envMake":  summon.envMake,
+		"envMake":  EnvMake,
 	}
 
 	vessel, err := os.ReadFile("vessels/scorevault.vesl")

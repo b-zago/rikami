@@ -212,17 +212,18 @@ func (smn *Summon) bindParts(key string, targetStr string) string {
 	return ""
 }
 
-func (smn *Summon) envMake(path string) string {
+func EnvMake(path string) map[string]string {
 	rawEnvs, err := os.ReadFile(path)
 	check(err)
 	envs := strings.TrimSpace(string(rawEnvs))
 	fmt.Println(envs)
 	lineSplit := strings.Split(envs, "\n")
 	fmt.Println("LINE SPLIT TEST")
+	envVars := make(map[string]string)
 	for _, env := range lineSplit {
 		valSplit := strings.Split(env, "=")
-		smn.EnvVars[valSplit[0]] = valSplit[1]
+		envVars[valSplit[0]] = valSplit[1]
 	}
-	fmt.Println(smn.EnvVars)
-	return ""
+	fmt.Println(envVars)
+	return envVars
 }
