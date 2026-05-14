@@ -2,8 +2,10 @@ deployments:
   - component: server
     containerPort: 3000
     envVars:
-      DB_HOST: scorevault-database-service
-      REDIS: scorevault-redis-service
+      - name: DB_HOST
+        value: scorevault-database-service
+      - name: REDIS
+        value: scorevault-redis-service
     image: ghcr.io/b-zago/scorevault/webserver:latest
     imagePullSecret: ghcr-creds
     name: web-server
