@@ -218,6 +218,17 @@ func (smn *Summon) makeMap(elements ...any) map[string]any {
 }
 
 func (smn *Summon) appendObj(shardPart map[string]any, key string, val any) string {
+	var index int
+	insideList := false
+	if strings.HasSuffix(key, "]") {
+		inx, rawKey, noIndex := extractIndex(key)
+		if noIndex {
+			panic("Need to provide an index to access a list")
+		}
+		key = rawKey
+		index = inx
+		insideList = true
+	}
 	switch v := shardPart[key].(type) {
 	case map[string]any:
 		newMap, ok := val.(map[string]any)
@@ -227,12 +238,26 @@ func (smn *Summon) appendObj(shardPart map[string]any, key string, val any) stri
 			panic("Wrong type") // specify error later
 		}
 	case []any:
-		vList, ok := val.([]any)
-		if ok {
-			shardPart[key] = append(v, vList...)
+		if insideList {
+			inner, ok := v[index].(map[string]any)
+			if !ok {
+				panic("Wrong type")
+			}
+			newMap, ok := val.(map[string]any)
+			if !ok {
+				panic("Wrong type")
+			}
+			maps.Copy(inner, newMap)
+			shardPart[key] = v
 		} else {
-			panic("Wrong type")
+			vList, ok := val.([]any)
+			if ok {
+				shardPart[key] = append(v, vList...)
+			} else {
+				panic("Wrong type")
+			}
 		}
+
 	}
 	return ""
 }

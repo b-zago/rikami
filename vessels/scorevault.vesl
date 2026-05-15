@@ -11,6 +11,7 @@
 
 {{override .chart.Main "description" "Scorevaulting test app"}}
 {{override .chart.Main "name" "Scorevaulting"}}
+{{append .chart.Main "dependencies[0]" (map "version" "8.1.1")}}
 
 {{summon}}
 ---
