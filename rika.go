@@ -26,7 +26,7 @@ func main() {
 		"receive": summon.receive,
 		"seal":    summon.endShard,
 		"list":    summon.makeList,
-		"map":     summon.makeMap,
+		"map":     MakeMap,
 		"envMake": EnvMake,
 		"bind":    summon.bindParts,
 	}
@@ -36,9 +36,10 @@ func main() {
 		"override": summon.override,
 		"append":   summon.appendObj,
 		"list":     summon.makeList,
-		"map":      summon.makeMap,
+		"map":      MakeMap,
 		"partMake": summon.partMake,
 		"envMake":  EnvMake,
+		"envGen":   summon.envGen,
 		"global":   summon.globalSet,
 		"conf":     summon.confAdd,
 		"secMake":  SecMake,
@@ -78,7 +79,7 @@ func main() {
 	}
 	// fmt.Println("shards map:", summon.Shards)
 	// fmt.Println("-----------------------")
-	err = vesselTraitsTmpl.Execute(io.Discard, summon.ShardMap)
+	err = vesselTraitsTmpl.Execute(os.Stdout, summon.ShardMap)
 	check(err)
 
 	fmt.Println("-----------------------")

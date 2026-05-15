@@ -7,17 +7,33 @@ deployments:
     name: redis
     runsOn: redis
   - component: database
-    envSecretRef: database-envs
+    containerPort: 5432
+    envSecretRefs:
+      - database-envs
     image: postgres:18-alpine
     name: database
     runsOn: postgres
+  - component: server
+    containerPort: 8000
+    envSecretRefs:
+      - database-envs
+    envVars:
+      - name: DB_HOST
+        value: scorevaulting-database-service
+      - name: REDIS
+        value: scorevaulting-redis-service
+    image: ghcr.io/b-zago/scorevault/webserver:latest
+    imagePullSecret: ghcr-creds
+    name: web-server
+    runsOn: python
+routes:
+  - host: scorevaultin.zagoapps.com
+    name: web-server-route
+    runsOn: web-server-service
 secrets:
   - data:
-      SOME_SECRET1: AgABYBxDs6a3NXUu1uwmuzCdjbY10ZvjGFCfKy/AXgXrvGZt4J2VMWVaeILDEM/vc3B2CDXvT8R76Zl8giFRld97glgcGz5TCvo7V8kaJn+qC1+YeVBBIKnBf4Nf1qroUdetRpliYfrPn6nTy0QQuOGpkEaR6Ct+buMbFjazxCR9SPMQ7BzXMDsSf1ns0VTRA/WmrDJjUTSgZQVF5OUVx6KvER3vlHibtpP9Crl9gFOsLl1D7iTdgGobfubLlzW5oKWWSGWd286kGL4o0tVb67YzgjjmlOPvPa3YwvsNCLQi+C51KZMO2R0s/e/8I40qVCsYjSNwRKQ6OTJqdgFhvjQNpQgKytFFylbHMV8HNzFqiLH/k1LSysIKYuIozi1e0oTMQsxL/jkM6OHj8YuoXDhLMJVZTbdJcqX3p6qJtXPeMWw7cs7unpXo+mJiQtMyoNci/h42r6nCxGFQf26RuwQg2EsM3BCgLFNLzq8v3vvprTWFAvcmTVVQi0vTWqw0mvTGKq5w2+d0cz6fkQhxQyIzZ1GTtafhQeFTEA6zLQUTUbfONexgQZH+B9w+Bn9ubgvAosdXBEg7E3E3gdoIkbPZAq2+jD4+kkSPR5WjlTIOn8k5vKHlkP7s2L3a9BVbnzMSbQpUBg53Lg8mj4VBhq9jMV4WGUaIGlGas6Pt9wXlz6j7z7ZIthj9Ufr0Hg11kHxLpHE6MALNh/AM
-      SOME_SECRET2: AgB3qiZeO+B4ALrDrNw0N5fvB9iYGo//GpEzhVjk6iwL3Wl4j5Q6rKT9ZfGssbUplpO3D2+iXn+9DzarHGalmJw8o07lKbdyAvnGS5mRlfV7pLFIkiR2Z4EfPSiYij5ltEsScxs1PAnO5Nl3EewDMBPKXJ2JAIZuY2U0V6ipahXz4KH0m46CTG/Z9xGIXjMKS3nS00NkWq0v46LdKlCSVkQOFC92vyQMrxHAJcnglaTBt3C5Cq8WN1ZlLZZDLN1WUgVy1KYxh3kk4hzehB34f0SdyX8VUWppD66tC6CASKrVbx8rXhBBOPhrqGlHerOTuAnwjW3fJInXFCsxUyjufSVc5kwV0GzdVnp68uihxq8jNY6gtVxv7HEzLn5z7qjm4IG5ADH0fSwYdT4im4PDHby9yFOKM32ILD+ATohVLJ2T7mDRl9dCXvPYeiRB2u+zGhUEcVHpsrNaed6I8vzJjQNJ5+Xo+polOtrCYNu3MLXlbZFFiUkVyxjFJwVVbD9Ivjf7+20Ybbtc37lkm90Hcho8PjJE4aot+PBfsBngtI5GumC/BhKCRob5FQ4vU77xQpBTLQRDFc1ziAPO76CE8wWU1FVJaz2PmhJWw2y7G9IdvoU2PLk4iy9Gzt7DfkzByJ3BT8cREOwSUpObbVg4c2utdv2L3UiuXKJKjwu0PgSg5P+ioHmEfaQIf+vf9Pw0EHfaNQh8PfgPrQ==
-    listTargetTest: otherval
-    listTraversal:
-      - t4val
+      SOME_SECRET1: AgAJ7P1+3CJ178ZR3LD8J77E/5CQr8EH5EIgWI7cKEJBXOcExdiIC0bgAa4zqnTtHn+rjTd2S6VtYD4fYoCIRojQCwQx34EReCK8fOKOAoSjHvuihmmliCpnF2KWvdjfsFA+vu/eNjyt2zN50C8bdpk0EvpZyCUFcFdUvs/LG6ymYrxsAjVUxHzMCNxgFO11rxtIMA6v+HT5pwxmbjNKXO08ha9Tzu3ZRy5+BmY/88c3JdgnmXgrMeU55EzebtIX7snpvAliLxfTPPYBOXly+dYIbBuwr/NGHr1/FCVIjJx5ztRI6mzhNXVJif9q0BmRvhOAxJu/4E6Ra5vTtCUVskfSvuPOfUvgqaWBUOSDzkQ8a5Qr1oB5jTBfxXx4fOznzuLyNSrVqms2ofXQ0TJdF36xi22ECCTUtpeqH+QWglpzkIJvKfHxvwN5sOQc4d8p6tFvdk+30AM9LGj0Oof3wYCyuq2TPWuUNOsW5L5PiQ4HaxzKDRR408xLi00InH/O3xYM/WcxPzSNyWM0ewBPyMG/hg/MIBhQsjtcy1EaAK8f8nHTe0E+XVY6M264E6TrpXi0xHDwnPO6dS+dPqOmIQUs4nXnRHeUEgkhlPwUTLyTggwHIUDF5R2dJre1R4mHv8r0b5vtu8abUT81Yah1ihbnWWkNgsMQt/KTdc6V8+CXPfk8OkBVZvf85yCdjVa1daXROSqitsJ5cmgX
+      SOME_SECRET2: AgCf/oIKP57bYcAV+ThAgVAC9MAehOPDu0cB3ls7SduxZ1UJYRKb+dROJRrgXWkGsMtq7OT5SoS4jONpEGbeD3rhU2hiHUB03chipFyE14x5m89kLTmDHTvVJt5sQ9lmFkZyxUZNjBcMXj5kz1Gg3OeGxuHo8ZN5YOk1jhuuefauDiVwKxTICzDATFvr3UIyI3ATdzf6Q9YHXPJMhSR2wAWtw0oeJ5i9QmAxeG2aGgeGjvoLcPqNzcCRwi6mfI9NbeL+rz0KXfHhDjatA+japv+T3dXY7xVk4FlrOfZajTSe0WZcBP1RCYK0uNvItPd7RELznCyWSC2Nt6Q7ds85aA1XFDdmNP8bcVgvT7IdoR47SGwd+kK7SstbTBsIbQuvBnn2xpkHwcf3h4T/sBGGNuM/Qqgbz5K8YvrSOAP9dW3q72ci3DVWSQ4ZF0778rPdlP/pLLEoBHH9iueePfMpI9CysaYMb+HjaeVHNlR5FrmIx6Q+l41Qq6UgwqYPbvpvmAOgc1Luz5yI0es0TjKN7FLprLscfsBWDiVRvs1JIB24PPK4PIk0VjxbIgROAy7Wao92hxcWYTuprGIqatMglNVcr5MTcROLe6anrhsc+XRS5jD1swggrh/wpTTDY0mKlOdPYKScRA7oH6w91z/ENCQOQSivPhMXWFR29nXR5Zc13ueJPcHn6wVqvMW0JMV9bL/qwNoiyfxqKA==
     name: database-envs
     runsOnList:
       - database
@@ -26,15 +42,11 @@ services:
     port: 6379
     runsOn: redis
     targetPort: 6379
-  - list:
-      - someval1
-      - otherval
-    list2:
-      - t1: t1val
-        t2: t2val
-      - t3: t3val
-        t4: t4val
-    name: database-service
+  - name: database-service
     port: 5432
     runsOn: database
     targetPort: 5432
+  - name: web-server-service
+    port: 80
+    runsOn: web-server
+    targetPort: 8000

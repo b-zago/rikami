@@ -5,20 +5,18 @@
 {{set "runsOn" "database"}}
 {{set "port" 5432}}
 {{set "targetPort" 5432}}
-{{set "list" (list "someval1" "otherval")}}
-{{set "list2" (list (map "t1" "t1val" "t2" "t2val") (map "t3" "t3val" "t4" "t4val"))}}
 
 {{begin "Secrets"}}
 {{set "name" "database-envs"}}
 {{bind "runsOnList" "Services@runsOn[]" }}
-{{bind "listTargetTest" "Services@list[1]"}}
-{{bind "listTraversal" "Services@list2[1]@t4[]"}}
+{{bind "runsOnList" "$envSecretRefs=name"}}
 {{receive "data"}}
 
 {{begin "Deployments"}}
-{{set "name" "database"}}
+{{bind "name" "Services@runsOn"}}
 {{set "image" "postgres:18-alpine"}}
 {{set "runsOn" "postgres"}}
 {{set "component" "database"}}
-{{bind "envSecretRef" "Secrets@name"}}
+{{bind "containerPort" "Services@targetPort"}}
+{{bind "envSecretRefs" "Secrets@name[]"}}
 {{seal}}

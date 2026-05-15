@@ -2,17 +2,17 @@
 {{begin "Routes"}}
 
 {{set "name" "web-server-route"}}
-{{set "runs-on" "web-server-service"}}
+{{set "runsOn" "web-server-service"}}
 {{receive "host"}}
 
 {{begin "Services"}}
-{{set "name" "web-server-service"}}
-{{set "runs-on" "web-server"}}
+{{bind "name" "Routes@runsOn"}}
+{{set "runsOn" "web-server"}}
 {{set "port" 80}}
 {{receive "targetPort"}}
 
 {{begin "Deployments"}}
-{{set "name" "web-server"}}
+{{bind "name" "Services@runsOn"}}
 {{receive "image"}}
 {{set "imagePullSecret" "ghcr-creds"}}
 {{receive "runsOn"}}

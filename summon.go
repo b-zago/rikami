@@ -24,6 +24,11 @@ type BindRef struct {
 	IndexMap   map[int]int
 }
 
+type GlobalBindRef struct {
+	BindRef
+	EqualTo string
+}
+
 type Summon struct {
 	ShardMap         ShardMapType
 	Shards           map[string][]string
@@ -193,7 +198,7 @@ func (smn *Summon) makeList(elements ...any) []any {
 	return newList
 }
 
-func (smn *Summon) makeMap(elements ...any) map[string]any {
+func MakeMap(elements ...any) map[string]any {
 	newMap := make(map[string]any)
 	var prevKey string
 	for i, element := range elements {
@@ -280,6 +285,12 @@ func extractIndex(rawStr string) (int, string, bool) {
 
 func (smn *Summon) bindParts(key string, targetStr string) string {
 	targetSplit := strings.Split(targetStr, "@")
+	if strings.HasPrefix(targetStr, "$") {
+		if len(targetSplit) == 1 {
+		}
+
+		fmt.Println("handle map traversal here somehow")
+	}
 	_, ok := smn.ShardMap[smn.CurrentShard][targetSplit[0]]
 	if !ok {
 		panic("Wrong target to bind to")
@@ -322,6 +333,17 @@ func (smn *Summon) globalSet(key string, val any) string {
 func (smn *Summon) confAdd(name string) string {
 	smn.ConfShards = append(smn.ConfShards, name)
 	return ""
+}
+
+func (smn *Summon) envGen(elements ...string) []map[string]string {
+	var finalVal []map[string]string
+	for i := 0; i < len(elements)-1; i += 2 {
+		finalVal = append(finalVal, map[string]string{
+			"name":  elements[i],
+			"value": elements[i+1],
+		})
+	}
+	return finalVal
 }
 
 func SecMake(path string, ns string, name string) map[string]string {
