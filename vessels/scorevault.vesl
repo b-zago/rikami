@@ -4,6 +4,7 @@
 {{- cast "Redis" "redis" -}}
 {{- cast "Postgres-deploy" "db" -}}
 {{- cast "Webserver" "webServer" -}}
+{{- cast "Webserver" "sideWeb" -}}
 {{- global "env" "staging" -}}
 ---
 {{override .chart.Main "description" "Scorevaulting test app"}}
@@ -18,15 +19,13 @@
 {{override .webServer.Deployments "image" "ghcr.io/b-zago/scorevault/webserver:latest"}}
 {{override .webServer.Deployments "runsOn" "python"}}
 
-{{print $prefix .db.Services.name}}
-{{print $prefix .redis.Services.name}}
+{{override .sideWeb.Routes "host" "scorevaultin.zagoapps.com"}}
+{{override .sideWeb.Services "targetPort" 8000}}
+{{override .sideWeb.Deployments "image" "ghcr.io/b-zago/scorevault/webserver:latest"}}
+{{override .sideWeb.Deployments "runsOn" "python"}}
+
 {{override .webServer.Deployments "envVars" (envGen "DB_HOST" (print $prefix .db.Services.name) "REDIS" (print $prefix .redis.Services.name))}}
 {{override .webServer.Deployments "envSecretRefs" (list .db.Secrets.name)}}
 {{append .db.Secrets "runsOnList" (list .webServer.Deployments.name)}}
-{{override .db.Secrets "runsOnList" "del"}}
 
 {{summon}}
----
-
-
-

@@ -39,11 +39,11 @@ type Summon struct {
 	ConfShards       []string
 }
 
-func NewSummon() *Summon {
+func NewSummon(bindLabels []string) *Summon {
 	summon := Summon{}
 	summon.Shards = make(map[string][]string)
 	summon.ShardCounter = 0
-	summon.BindLabels = []string{"runs-on", "name"} // load from config later
+	summon.BindLabels = bindLabels // load from config later
 	summon.Vessel = make(map[string][]map[string]any)
 	summon.ShardMap = make(map[string]map[string]map[string]any)
 	summon.EnvVars = make(map[string]string)

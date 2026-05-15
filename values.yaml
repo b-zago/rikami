@@ -26,17 +26,27 @@ deployments:
     imagePullSecret: ghcr-creds
     name: web-server
     runsOn: python
+  - component: server
+    containerPort: 8000
+    image: ghcr.io/b-zago/scorevault/webserver:latest
+    imagePullSecret: ghcr-creds
+    name: web-server-1
+    runsOn: python
 routes:
   - host: scorevaultin.zagoapps.com
     name: web-server-route
     runsOn: web-server-service
+  - host: scorevaultin.zagoapps.com
+    name: web-server-route-1
+    runsOn: web-server-service-1
 secrets:
   - data:
-      SOME_SECRET1: AgA/phCGPUA5jSS1tYQ3pMYbg1N4tVv0qX/dvb7hprLQHo7qyB4G29CTm8V/Da9VRVSiz9VxbJW/M26Mtw86NmyTTCkFkWx/wJto3OcQpEG++cVaJqCQ70ltvHRNoQXk5bEe7Dk1J2Z/Wok5ZlyFmzqDxWGymBJpPMzxksQY/LjxBnU7++l8OwavVp4Mi3J7WtpyrbmL2qU9gqZomR8AQtgYbGGKXD90OsttE2Eg+mU6el1bzGnp3F1eMvvHGPKM9c5al75dj0N0OM76Mw6AsJqTMqqk0jbN/376L0YisBPsN9tDBGwcvJv/3W4zvpVKPm7EoNNiQZ+slGZwoXvbMC3fQoqclAES+fGUgASZc/9En00wykoROa6dWNohNRbajD9CoX28CzFJNhPebipcxIlcpWvQqc+2WGfoa5qM2lCJ0YGrtDpnPfk53NTR8abzsosFNKz8Jy+SHM6pWUs9o3w9EAmLHtqvGHrrl7RwZLFSjk0Waz/KhexqoC3AsZX1Jz9y9oK6+lR6d8/uEEQPP5l/vB7Y8zmNM02gRHBTvx9xxlKxi1epSk3UvstEenCWDA5+D0N3Ael39SGPhRu+InG6k7A5TIXhNHzMdeatvbEUJ1ETWy2pL4vt/prxW7UiAvs0G00lScIiukGU6LH9PLxyVXmhiAd0wj1Jwqo16Aiq8kVUCEPh4anSF0ALRcBY5rkwoZduHnd2Th9H
-      SOME_SECRET2: AgB5hCHnnA5AilywVg/vgW9iyfA2UJnDMb+IMjBWXPy+N/M+ra3q+A006tUwR6Rwp/EvlRnoiPN2rbiNdpJ6UPZa/FLrQnKb0ZERPoL0Aw1cabZM5kZOB1Slqb+hbXzUnsUDXfo6qjh0EvOf2V64GtvqvbQwd9xfEqQKwXholP8v1Q8xZK0AxPOAI+UMVd9Zbm1oqvu1vwzAziEmS3v5u44LW8mPgs8oCdCe+vTGuguEing2pWmF8FvIDLwrD02pEqoS/pI5/MIJB/jtkwSnVlgRMAViZixQ16yj7gz1GmEPFmiNUpy0hwOvcbEpkSSCJ/GhYjvuY8aMiFWdZzpul1lFjd8hjTtRnN0kPnMxic7o+mLgTvyAHbcFG+WOdEX63aeWrTalt3RxD7nS/4DlGrW6cw4zChnvqQCxIoGP9fjzA73f+pxsYGfw09bGPM+zEiiJWvCu8e7WEBQBa8x2Fz6ytfmkQRlFvSBwvWVquf3PbLGu8zLqq8oShAsxJu+ZbwofCRZCiy//EXnHbFkKgJetxoRzhXh3eIuGiiN7t9p2a/aYX6dpvvjgSjcqmBMXBGNg8TtPGyOMZTkSenXJBv40oPFc+XSww0jm+s5YRFJmhtpyh/LxdkBKHGZB5cvMSd8n7uLiPkJ7/7s4FzRdgMDR974IjI+Ux9ndziil6JJOcRuzxwJZhwGLKDry5VjEOj+GfSDzCvqStw==
+      SOME_SECRET1: AgAAhLJef7FKzbPjdpspuolXsQz9fABCJAYmSPt0lJx6MaF+YjKhA3z5zFyfCJ4+ku0tEaYBNFGvNRtYZM/sYx5ZDSTXwCogwUvvmZ+TSBdvXpNvUdlhO1BV0+W5bSycjNevCnmL56pZh5r4VGpHwznkasq+JndV3xpCd1cwxltfd8bYPRZ3+fW1jqPKD1T9ULDD21g+DlHD0iJ98+8o2OihFXx+Q0G7ElQZIxLBKyw/plcjkpZS8hoLpt6lcZ7HshgTq2GnihTTktbVhnx4wEH4ZI5gqLcmPTeY+M6CTBwVlLHRltYpXtK7P1pKMqAqhCD9VvXQnF09zT5ugJcj51rzHMUxWpjPfp/VnNp+T/pABG8qJMY68C2v95Qr7S+9J8NjUQCB1APXV58iROEtLEp1f8UDxrXcDPYMlmkX3DnaQbz8bNnHXnXb8szcU2chM9lPlOIKT5xkRbY4k6w2/vK/tFDaDrQT2NNAAFq+T/rf2yUTC81XyIypTSU0Xhc+Ll9IwmqxTryvbTP1M5JT5AA/t3u6TZQHIN7WfHjAoPWQiBQVKo6SYVU7DSVdoxn3c0FYVOM3oIOUxAZZEr+3a49Uk5LY7gxFsmXibabwHjG1FkyGNm3WpU9+fmFCKNLITRxGhR6+GXWiXcCi3NhkYZl9HnU0IMMqqJyc/o+ceaNBkGXhzNwfODTOTHlU+brTV6UdsVTcgdgTqRTc
+      SOME_SECRET2: AgAYfWCxneSiJflwv21TDvp9gW7vkV22EVnVirtnzD1EstcVlt0Ktlr9eRQszFHmjIvJMn6M3zIb62NHRgNAky7QQ3xK+raafh9Bdfcq47qwPdZzC7ZMMgifqWxJTj6Y7qQ5guROLuNfxNPwKrzXx9LfTmZ4NtWvD+uUFne04PXdawAHmbPQlG26mhTAd00DOpGFWzXr51V3bavJZIcXv/MM4PRHS2TBXqHAQqD7RsLTHpmvuSxYs8vDMfv/arOS1QrDLHKLN7O7XcixCEOdkbpck7Gb0PxG846V34b3bFweQfamr5xKheeeh2lNyKSsO33cP16xm4VSXP/OD7Rryqdior/izh5L4PlRL5KI66DtEFdZW14Ws4poS2Mr/epcF4maB9+/naD9mMWIMYMuA16xq1CpcBobmrFMovtL8pGVFVKE6eIa/SE3HSym/C27J6r10Ndh0Ku8/KfluB0rEwfEJtc0hkrxbbXjPjcfZXF2U1Wxwbflm1JZ4V+0rv814jC4a5/+kZBAxNfl60MvV4+M957JX6hCNcb29SFnj0DAHubDKBiijTSSqnjwQsnA4rXtZJo3an7MGAWagAjmyOB1Ch2p774Tnhc2Cdt2AGc+plf8Th4zmNI1rSqLxVYz1NbgGNRralw+xJHxyHSJf4l4hJ5gsnaqfSd1+Evzgv1485wZtnDnxMqYD7hX4Ea86mnlu+n8oqsx8A==
     name: database-envs
     runsOnList:
       - database
+      - web-server
 services:
   - name: redis-service
     port: 6379
@@ -49,4 +59,8 @@ services:
   - name: web-server-service
     port: 80
     runsOn: web-server
+    targetPort: 8000
+  - name: web-server-service-1
+    port: 80
+    runsOn: web-server-1
     targetPort: 8000

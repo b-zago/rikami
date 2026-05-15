@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	s "strings"
 	"text/template"
 
@@ -18,7 +19,15 @@ func check(e error) {
 }
 
 func main() {
-	summon := NewSummon()
+	homePath, err := os.UserHomeDir()
+	check(err)
+	confPath := filepath.Join(homePath, ".config", "rikami", "conf")
+
+	conf := LoadConf(confPath)
+
+	fmt.Println(conf, "CONFIGGGG")
+
+	summon := NewSummon(conf.BindLabels)
 	shardFuncMap := template.FuncMap{
 		"set":     summon.setShardVal,
 		"begin":   summon.beginShardPart,
