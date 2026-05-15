@@ -6,12 +6,11 @@
 {{- cast "Webserver" "webServer" -}}
 {{- global "env" "staging" -}}
 ---
-
 {{override .chart.Main "description" "Scorevaulting test app"}}
 {{override .chart.Main "name" "scorevaulting"}}
 {{append .chart.Main "dependencies[0]" (map "version" "0.1.1")}}
 {{$prefix := print .chart.Main.name "-"}}
-{{$prefix}}
+
 {{override .db.Secrets "data" (secMake ".env.secret" .Globals.Values.env .db.Secrets.name)}}
 
 {{override .webServer.Routes "host" "scorevaultin.zagoapps.com"}}
@@ -23,6 +22,8 @@
 {{print $prefix .redis.Services.name}}
 {{override .webServer.Deployments "envVars" (envGen "DB_HOST" (print $prefix .db.Services.name) "REDIS" (print $prefix .redis.Services.name))}}
 {{override .webServer.Deployments "envSecretRefs" (list .db.Secrets.name)}}
+{{append .db.Secrets "runsOnList" (list .webServer.Deployments.name)}}
+{{override .db.Secrets "runsOnList" "del"}}
 
 {{summon}}
 ---

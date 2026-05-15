@@ -9,7 +9,6 @@
 {{begin "Secrets"}}
 {{set "name" "database-envs"}}
 {{bind "runsOnList" "Services@runsOn[]" }}
-{{bind "runsOnList" "$envSecretRefs=name"}}
 {{receive "data"}}
 
 {{begin "Deployments"}}

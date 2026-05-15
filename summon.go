@@ -24,11 +24,6 @@ type BindRef struct {
 	IndexMap   map[int]int
 }
 
-type GlobalBindRef struct {
-	BindRef
-	EqualTo string
-}
-
 type Summon struct {
 	ShardMap         ShardMapType
 	Shards           map[string][]string
@@ -105,6 +100,8 @@ func (smn *Summon) receive(key string) string {
 
 func (smn *Summon) override(shardPart map[string]any, key string, val any) string {
 	shardPart[key] = val
+	// check here if we should even start binds, or maybe just do precise binds instaed of all
+	smn.bindAll()
 	return ""
 }
 
@@ -113,7 +110,7 @@ func (smn *Summon) endShard() string {
 	return ""
 }
 
-func (smn *Summon) soulGen() string {
+func (smn *Summon) bindAll() string {
 	for _, ref := range smn.BindRefs {
 		shard := smn.ShardMap[ref.Shard]
 		firstKey := ref.TargetPath[0]
@@ -171,9 +168,17 @@ func (smn *Summon) soulGen() string {
 				smn.ShardMap[ref.Shard][ref.Part][ref.Key] = finalVal
 			}
 		} else {
+			fmt.Println("did it for", sender)
+			fmt.Println(smn.ShardMap[ref.Shard][ref.Part][ref.Key])
 			smn.ShardMap[ref.Shard][ref.Part][ref.Key] = sender.(map[string]any)[last]
+
+			fmt.Println(smn.ShardMap[ref.Shard][ref.Part][ref.Key])
 		}
 	}
+	return ""
+}
+
+func (smn *Summon) soulGen() string {
 	for shardName, shardVals := range smn.ShardMap {
 		for shardVal, shardFragment := range shardVals {
 			if !slices.Contains(smn.ConfShards, shardName) && shardName != "Globals" {
@@ -234,6 +239,7 @@ func (smn *Summon) appendObj(shardPart map[string]any, key string, val any) stri
 		index = inx
 		insideList = true
 	}
+	fmt.Println(shardPart[key], "hellooooo")
 	switch v := shardPart[key].(type) {
 	case map[string]any:
 		newMap, ok := val.(map[string]any)
@@ -243,7 +249,10 @@ func (smn *Summon) appendObj(shardPart map[string]any, key string, val any) stri
 			panic("Wrong type") // specify error later
 		}
 	case []any:
+
 		if insideList {
+
+			fmt.Println("yes")
 			inner, ok := v[index].(map[string]any)
 			if !ok {
 				panic("Wrong type")
@@ -285,12 +294,6 @@ func extractIndex(rawStr string) (int, string, bool) {
 
 func (smn *Summon) bindParts(key string, targetStr string) string {
 	targetSplit := strings.Split(targetStr, "@")
-	if strings.HasPrefix(targetStr, "$") {
-		if len(targetSplit) == 1 {
-		}
-
-		fmt.Println("handle map traversal here somehow")
-	}
 	_, ok := smn.ShardMap[smn.CurrentShard][targetSplit[0]]
 	if !ok {
 		panic("Wrong target to bind to")

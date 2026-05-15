@@ -43,6 +43,7 @@ func main() {
 		"global":   summon.globalSet,
 		"conf":     summon.confAdd,
 		"secMake":  SecMake,
+		"vessel":   summon.bindAll,
 	}
 
 	vessel, err := os.ReadFile("vessels/scorevault.vesl")
