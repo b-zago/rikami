@@ -40,11 +40,11 @@ type Summon struct {
 	TargetPath       string
 }
 
-func NewSummon(bindLabels []string) *Summon {
+func NewSummon() *Summon {
 	summon := Summon{}
 	summon.Shards = make(map[string][]string)
 	summon.ShardCounter = 0
-	summon.BindLabels = bindLabels // load from config later
+	summon.BindLabels = Config.BindLabels
 	summon.Vessel = make(map[string][]map[string]any)
 	summon.ShardMap = make(map[string]map[string]map[string]any)
 	summon.EnvVars = make(map[string]string)
@@ -141,7 +141,7 @@ func (smn *Summon) bindAll() string {
 			if !ok {
 				panic("stop right there citizen")
 			}
-			fmt.Println(sender, "sender")
+			// fmt.Println(sender, "sender")
 			inx, ok := ref.IndexMap[i+1]
 
 			if ok {
@@ -159,7 +159,7 @@ func (smn *Summon) bindAll() string {
 				}
 				sender = next
 
-				fmt.Println(sender, "sender end")
+				// fmt.Println(sender, "sender end")
 			}
 		}
 
@@ -176,18 +176,18 @@ func (smn *Summon) bindAll() string {
 				finalList := sender.(map[string]any)[lastClean]
 				assertVal, ok := finalList.([]any)
 				if !ok {
-					fmt.Println(last, sender)
+					// fmt.Println(last, sender)
 					panic("Something is wrong with list bind on type assertion")
 				}
 				finalVal := assertVal[index]
 				smn.ShardMap[ref.Shard][ref.Part][ref.Key] = finalVal
 			}
 		} else {
-			fmt.Println("did it for", sender)
-			fmt.Println(smn.ShardMap[ref.Shard][ref.Part][ref.Key])
+			// fmt.Println("did it for", sender)
+			// fmt.Println(smn.ShardMap[ref.Shard][ref.Part][ref.Key])
 			smn.ShardMap[ref.Shard][ref.Part][ref.Key] = sender.(map[string]any)[last]
 
-			fmt.Println(smn.ShardMap[ref.Shard][ref.Part][ref.Key])
+			// fmt.Println(smn.ShardMap[ref.Shard][ref.Part][ref.Key])
 		}
 	}
 	return ""
@@ -255,7 +255,7 @@ func (smn *Summon) appendObj(shardPart map[string]any, key string, val any) stri
 		index = inx
 		insideList = true
 	}
-	fmt.Println(shardPart[key], "hellooooo")
+	// fmt.Println(shardPart[key], "hellooooo")
 	switch v := shardPart[key].(type) {
 	case map[string]any:
 		newMap, ok := val.(map[string]any)
@@ -268,7 +268,7 @@ func (smn *Summon) appendObj(shardPart map[string]any, key string, val any) stri
 
 		if insideList {
 
-			fmt.Println("yes")
+			// fmt.Println("yes")
 			inner, ok := v[index].(map[string]any)
 			if !ok {
 				panic("Wrong type")

@@ -1,18 +1,18 @@
-{{conf "chart"}}
+{{conf "Chart"}}
 ---
-{{- cast "Chart" "chart" -}}
+{{- cast "Chart" "Chart" -}}
 {{- cast "Redis" "redis" -}}
 {{- cast "Postgres-deploy" "db" -}}
 {{- cast "Webserver" "webServer" -}}
 ---
 {{- global "env" "staging" -}}
 
-{{override .chart.Main "description" "Scorevaulting test app"}}
-{{request .chart.Main "name" "Chart name"}}
-{{append .chart.Main "dependencies[0]" (map "version" "0.1.1")}}
-{{$prefix := print .chart.Main.name "-"}}
+{{override .Chart.Main "description" "Scorevaulting test app"}}
+{{request .Chart.Main "name" "Chart name"}}
+{{append .Chart.Main "dependencies[0]" (map "version" "0.1.1")}}
+{{$prefix := print .Chart.Main.name "-"}}
 
-{{target .chart.Main.name}}
+{{target .Chart.Main.name}}
 
 {{override .db.Secrets "data" (secMake ".env.secret" .Globals.Values.env .db.Secrets.name)}}
 

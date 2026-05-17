@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	s "strings"
 	"text/template"
 
@@ -19,18 +20,41 @@ func Check(e error) {
 	}
 }
 
-var Reader = bufio.NewReader(os.Stdin)
+var (
+	Reader = bufio.NewReader(os.Stdin)
+	Config *Conf
+)
 
 func main() {
-	homePath, err := os.UserHomeDir()
+	userDefaultConf, err := os.UserConfigDir()
 	Check(err)
-	confPath := filepath.Join(homePath, ".config", "rikami", "conf")
+	confPath := filepath.Join(userDefaultConf, "rikami", "conf")
 
-	conf := LoadConf(confPath)
+	Config = LoadConf(confPath)
 
-	fmt.Println(conf, "CONFIGGGG")
+	argsNum := len(os.Args)
+	if argsNum < 2 {
+		fmt.Println("Well you kinda have to tell me what to do")
+		os.Exit(2)
+	}
 
-	summon := NewSummon(conf.BindLabels)
+	switch os.Args[1] {
+	case "summon":
+		if argsNum < 3 {
+			fmt.Println("You need to specify the vessel for me")
+			fmt.Println("Usage: rika summon <vessel>")
+			os.Exit(2)
+		}
+		startSummon(os.Args[2])
+		fmt.Println("Summon done")
+	default:
+		fmt.Println("Unknown command")
+		os.Exit(2)
+	}
+}
+
+func startSummon(vesselName string) {
+	summon := NewSummon()
 	shardFuncMap := template.FuncMap{
 		"set":     summon.setShardVal,
 		"begin":   summon.beginShardPart,
@@ -60,7 +84,10 @@ func main() {
 		"target":   summon.setTarget,
 	}
 
-	vessel, err := os.ReadFile("vessels/scorevault.vesl")
+	shardsPath := filepath.Join(Config.ResourcePath, "shards")
+	vesselName += ".ves"
+	vesselPath := filepath.Join(Config.ResourcePath, "vessels", vesselName)
+	vessel, err := os.ReadFile(vesselPath)
 	Check(err)
 
 	vesselSlice := s.Split(string(vessel), "---")
@@ -72,9 +99,9 @@ func main() {
 	}
 	vesselShards := vesselSlice[vesselPartJump]
 	vesselTraits := vesselSlice[vesselPartJump+1]
-	vesselShardsTmpl := template.Must(template.New("scorevault-shards").Funcs(vesselFuncMap).Parse(vesselShards))
-	vesselTraitsTmpl := template.Must(template.New("scorevault-traits").Funcs(vesselFuncMap).Parse(vesselTraits))
-	vesselConfsTmpl := template.Must(template.New("vessel-config").Funcs(vesselFuncMap).Parse(vesselConfs))
+	vesselShardsTmpl := template.Must(template.New("shards").Funcs(vesselFuncMap).Parse(vesselShards))
+	vesselTraitsTmpl := template.Must(template.New("traits").Funcs(vesselFuncMap).Parse(vesselTraits))
+	vesselConfsTmpl := template.Must(template.New("config").Funcs(vesselFuncMap).Parse(vesselConfs))
 
 	err = vesselConfsTmpl.Execute(io.Discard, nil)
 	Check(err)
@@ -83,7 +110,9 @@ func main() {
 	Check(err)
 
 	for key, val := range summon.Shards {
-		shard, err := os.ReadFile(fmt.Sprintf("shards/%s.shard", key))
+		shardFile := key + ".shard"
+		shardPath := filepath.Join(shardsPath, shardFile)
+		shard, err := os.ReadFile(shardPath)
 		Check(err)
 		shardString := string(shard)
 		for _, definedName := range val {
@@ -94,16 +123,8 @@ func main() {
 	}
 	// fmt.Println("shards map:", summon.Shards)
 	// fmt.Println("-----------------------")
-	err = vesselTraitsTmpl.Execute(os.Stdout, summon.ShardMap)
+	err = vesselTraitsTmpl.Execute(io.Discard, summon.ShardMap)
 	Check(err)
-
-	fmt.Println("-----------------------")
-	fmt.Println(summon.ShardMap)
-
-	fmt.Println("-----------------------")
-	fmt.Println(summon.Vessel)
-
-	fmt.Println(len(summon.Vessel))
 
 	for _, conf := range summon.ConfShards {
 		var buf bytes.Buffer
@@ -119,10 +140,12 @@ func main() {
 func ExecuteVessel(smn *Summon, outputfile string) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf, yaml.Indent(2), yaml.IndentSequence(true))
-	smn.Globals["deps"] = []string{}
+	var deps strings.Builder
 	for part := range smn.Vessel {
-		smn.Globals["deps"] = append(smn.Globals["deps"].([]string), part)
+		dep := fmt.Sprintf("{{- include \"lib.%s\" . -}}\n", part)
+		deps.WriteString(dep)
 	}
+	// fmt.Println(deps.String())
 
 	Check(enc.Encode(smn.Globals))
 	Check(enc.Encode(smn.Vessel))
@@ -133,5 +156,14 @@ func ExecuteVessel(smn *Summon, outputfile string) {
 	addExt := fmt.Sprintf("%s.yaml", outputfile)
 	writePath := filepath.Join(smn.TargetPath, addExt)
 	Check(os.WriteFile(writePath, buf.Bytes(), 0644))
-	buf.Reset()
+
+	// we create main.yaml only on the first run which means adding parts/casting shards wont work on overlays (which is fine)
+	mainPath := filepath.Join(smn.TargetPath, "templates", "main.yaml")
+	_, err = os.Stat(filepath.Dir(mainPath))
+	if err != nil {
+		err = os.Mkdir(filepath.Dir(mainPath), 0755)
+		Check(err)
+		err = os.WriteFile(mainPath, []byte(deps.String()), 0644)
+		Check(err)
+	}
 }

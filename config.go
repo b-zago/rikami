@@ -31,11 +31,11 @@ func LoadConf(path string) *Conf {
 	conf := &Conf{}
 	r := reflect.ValueOf(conf).Elem()
 	confString := strings.TrimSpace(string(confFile))
-	fmt.Println(confString)
+	// fmt.Println(confString)
 
 	for v := range strings.SplitSeq(confString, "\n") {
 		split := strings.Split(v, "=")
-		fmt.Println(split, v)
+		// fmt.Println(split, v)
 		if len(split) != 2 {
 			panic(fmt.Sprintf("Invalid config, please validate at %s", path))
 		}
@@ -55,7 +55,7 @@ func LoadConf(path string) *Conf {
 				return MakeConf(path)
 			}
 		}
-		fmt.Println(conf)
+		// fmt.Println(conf)
 	}
 	return conf
 }
@@ -80,7 +80,7 @@ func MakeConf(path string) *Conf {
 			split := strings.Split(cleanVal, ",")
 			r.FieldByName(fieldName).Set(reflect.ValueOf(split))
 		} else {
-			fmt.Println(cleanVal)
+			// fmt.Println(cleanVal)
 			r.FieldByName(fieldName).SetString(cleanVal)
 		}
 	}

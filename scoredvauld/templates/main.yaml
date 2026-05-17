@@ -1,0 +1,4 @@
+{{- include "lib.services" . -}}
+{{- include "lib.deployments" . -}}
+{{- include "lib.secrets" . -}}
+{{- include "lib.routes" . -}}
