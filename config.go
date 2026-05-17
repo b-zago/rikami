@@ -68,12 +68,16 @@ func MakeConf(path string) *Conf {
 	t := r.Type()
 	fieldsNum := r.NumField()
 	fmt.Println("Creating new config... Separate lists using ','. Spaces will be ignored")
-	for i := 0; i < fieldsNum; i++ {
+	fmt.Println("Just enter to skip if config already exists. Really not recommended for first config generation as it can break things")
+	for i := range fieldsNum {
 		fieldName := t.Field(i).Name
 		fmt.Printf("Please provide me %s:", fieldName)
 		val, err := reader.ReadString('\n')
 		check(err)
 		cleanVal := strings.TrimSpace(val)
+		if cleanVal == "" {
+			continue
+		}
 		if strings.Contains(cleanVal, ",") {
 			split := strings.Split(cleanVal, ",")
 			r.FieldByName(fieldName).Set(reflect.ValueOf(split))
@@ -92,7 +96,7 @@ func MakeConf(path string) *Conf {
 	}
 	defer f.Close()
 
-	for i := 0; i < fieldsNum; i++ {
+	for i := range fieldsNum {
 		fieldName := t.Field(i).Name
 		val := r.FieldByName(fieldName)
 		var valToWrite string
@@ -108,12 +112,3 @@ func MakeConf(path string) *Conf {
 	}
 	return conf
 }
-
-// func ReadConfList(list string) []string {
-// 	split := strings.Split(list, ",")
-// 	var newSlice []string
-// 	for _, v := range split {
-// 		newSlice = append(newSlice, v)
-// 	}
-// 	return newSlice
-// }

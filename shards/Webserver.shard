@@ -1,6 +1,6 @@
 {{shard "Webserver"}}
-{{begin "Routes"}}
 
+{{begin "Routes"}}
 {{set "name" "web-server-route"}}
 {{set "runsOn" "web-server-service"}}
 {{receive "host"}}
