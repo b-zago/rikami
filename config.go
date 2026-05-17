@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -62,7 +61,6 @@ func LoadConf(path string) *Conf {
 }
 
 func MakeConf(path string) *Conf {
-	reader := bufio.NewReader(os.Stdin)
 	conf := &Conf{}
 	r := reflect.ValueOf(conf).Elem()
 	t := r.Type()
@@ -72,8 +70,8 @@ func MakeConf(path string) *Conf {
 	for i := range fieldsNum {
 		fieldName := t.Field(i).Name
 		fmt.Printf("Please provide me %s:", fieldName)
-		val, err := reader.ReadString('\n')
-		check(err)
+		val, err := Reader.ReadString('\n')
+		Check(err)
 		cleanVal := strings.TrimSpace(val)
 		if cleanVal == "" {
 			continue
@@ -90,9 +88,9 @@ func MakeConf(path string) *Conf {
 	f, err := os.Create(path)
 	if err != nil {
 		err = os.MkdirAll(filepath.Dir(path), 0755)
-		check(err)
+		Check(err)
 		f, err = os.Create(path)
-		check(err)
+		Check(err)
 	}
 	defer f.Close()
 
@@ -108,7 +106,7 @@ func MakeConf(path string) *Conf {
 		}
 		str := fmt.Sprintf("%s=%s\n", fieldName, valToWrite)
 		_, err := f.WriteString(str)
-		check(err)
+		Check(err)
 	}
 	return conf
 }

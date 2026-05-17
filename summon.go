@@ -37,6 +37,7 @@ type Summon struct {
 	BindRefs         []BindRef
 	Globals          map[string]any
 	ConfShards       []string
+	TargetPath       string
 }
 
 func NewSummon(bindLabels []string) *Summon {
@@ -103,6 +104,20 @@ func (smn *Summon) override(shardPart map[string]any, key string, val any) strin
 	// check here if we should even start binds, or maybe just do precise binds instaed of all
 	smn.bindAll()
 	return ""
+}
+
+func (smn *Summon) request(shardPart map[string]any, key string, name string) bool {
+	fmt.Printf("Please provide me %s:", name)
+	val, err := Reader.ReadString('\n')
+	Check(err)
+	cleanVal := strings.TrimSpace(val)
+	shardPart[key] = cleanVal
+	return true
+}
+
+func (smn *Summon) setTarget(path string) bool {
+	smn.TargetPath = path
+	return true
 }
 
 func (smn *Summon) endShard() string {
@@ -178,7 +193,8 @@ func (smn *Summon) bindAll() string {
 	return ""
 }
 
-func (smn *Summon) soulGen() string {
+func (smn *Summon) soulGen(outputFile string) string {
+	smn.Vessel = make(map[string][]map[string]any)
 	for shardName, shardVals := range smn.ShardMap {
 		for shardVal, shardFragment := range shardVals {
 			if !slices.Contains(smn.ConfShards, shardName) && shardName != "Globals" {
@@ -193,7 +209,7 @@ func (smn *Summon) soulGen() string {
 			}
 		}
 	}
-
+	ExecuteVessel(smn, outputFile)
 	return ""
 }
 
@@ -287,7 +303,7 @@ func extractIndex(rawStr string) (int, string, bool) {
 		return -1, cleanString, true
 	} else {
 		indexNum, err := strconv.Atoi(index)
-		check(err)
+		Check(err)
 		return indexNum, cleanString, false
 	}
 }
@@ -358,13 +374,13 @@ func SecMake(path string, ns string, name string) map[string]string {
 		ksIn, _ := ksCmd.StdinPipe()
 		ksOut, _ := ksCmd.StdoutPipe()
 		err := ksCmd.Start()
-		check(err)
+		Check(err)
 		_, err = ksIn.Write([]byte(env["value"]))
-		check(err)
+		Check(err)
 		ksIn.Close()
 		ksBytes, _ := io.ReadAll(ksOut)
 		err = ksCmd.Wait()
-		check(err)
+		Check(err)
 		secMap[env["name"]] = string(ksBytes)
 	}
 	return secMap
@@ -372,7 +388,7 @@ func SecMake(path string, ns string, name string) map[string]string {
 
 func EnvMake(path string) []map[string]string {
 	rawEnvs, err := os.ReadFile(path)
-	check(err)
+	Check(err)
 	envs := strings.TrimSpace(string(rawEnvs))
 	lineSplit := strings.Split(envs, "\n")
 	var list []map[string]string

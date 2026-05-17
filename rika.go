@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -12,15 +13,17 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
-func check(e error) {
+func Check(e error) {
 	if e != nil {
 		panic(e)
 	}
 }
 
+var Reader = bufio.NewReader(os.Stdin)
+
 func main() {
 	homePath, err := os.UserHomeDir()
-	check(err)
+	Check(err)
 	confPath := filepath.Join(homePath, ".config", "rikami", "conf")
 
 	conf := LoadConf(confPath)
@@ -53,10 +56,12 @@ func main() {
 		"conf":     summon.confAdd,
 		"secMake":  SecMake,
 		"vessel":   summon.bindAll,
+		"request":  summon.request,
+		"target":   summon.setTarget,
 	}
 
 	vessel, err := os.ReadFile("vessels/scorevault.vesl")
-	check(err)
+	Check(err)
 
 	vesselSlice := s.Split(string(vessel), "---")
 	var vesselConfs string
@@ -72,25 +77,25 @@ func main() {
 	vesselConfsTmpl := template.Must(template.New("vessel-config").Funcs(vesselFuncMap).Parse(vesselConfs))
 
 	err = vesselConfsTmpl.Execute(io.Discard, nil)
-	check(err)
+	Check(err)
 
 	err = vesselShardsTmpl.Execute(io.Discard, nil)
-	check(err)
+	Check(err)
 
 	for key, val := range summon.Shards {
 		shard, err := os.ReadFile(fmt.Sprintf("shards/%s.shard", key))
-		check(err)
+		Check(err)
 		shardString := string(shard)
 		for _, definedName := range val {
 			shardTmpl := template.Must(template.New(definedName).Funcs(shardFuncMap).Parse(shardString))
 			err = shardTmpl.Execute(io.Discard, nil)
-			check(err)
+			Check(err)
 		}
 	}
 	// fmt.Println("shards map:", summon.Shards)
 	// fmt.Println("-----------------------")
 	err = vesselTraitsTmpl.Execute(os.Stdout, summon.ShardMap)
-	check(err)
+	Check(err)
 
 	fmt.Println("-----------------------")
 	fmt.Println(summon.ShardMap)
@@ -98,19 +103,35 @@ func main() {
 	fmt.Println("-----------------------")
 	fmt.Println(summon.Vessel)
 
-	var buf bytes.Buffer
-	enc := yaml.NewEncoder(&buf, yaml.Indent(2), yaml.IndentSequence(true))
-	check(enc.Encode(summon.Globals))
-	check(enc.Encode(summon.Vessel))
-	enc.Close()
-	check(os.WriteFile("values.yaml", buf.Bytes(), 0644))
-
-	buf.Reset()
+	fmt.Println(len(summon.Vessel))
 
 	for _, conf := range summon.ConfShards {
-		check(enc.Encode(summon.ShardMap[conf]["Main"]))
+		var buf bytes.Buffer
+		enc := yaml.NewEncoder(&buf, yaml.Indent(2), yaml.IndentSequence(true))
+		Check(enc.Encode(summon.ShardMap[conf]["Main"]))
+		enc.Close()
 		filename := fmt.Sprintf("%s.yaml", conf)
-		check(os.WriteFile(filename, buf.Bytes(), 0644))
-		buf.Reset()
+		writePath := filepath.Join(summon.TargetPath, filename)
+		Check(os.WriteFile(writePath, buf.Bytes(), 0644))
 	}
+}
+
+func ExecuteVessel(smn *Summon, outputfile string) {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf, yaml.Indent(2), yaml.IndentSequence(true))
+	smn.Globals["deps"] = []string{}
+	for part := range smn.Vessel {
+		smn.Globals["deps"] = append(smn.Globals["deps"].([]string), part)
+	}
+
+	Check(enc.Encode(smn.Globals))
+	Check(enc.Encode(smn.Vessel))
+	enc.Close()
+
+	err := os.MkdirAll(smn.TargetPath, 0755)
+	Check(err)
+	addExt := fmt.Sprintf("%s.yaml", outputfile)
+	writePath := filepath.Join(smn.TargetPath, addExt)
+	Check(os.WriteFile(writePath, buf.Bytes(), 0644))
+	buf.Reset()
 }

@@ -1,0 +1,57 @@
+deps:
+  - services
+  - secrets
+  - deployments
+  - routes
+env: prod
+---
+deployments:
+  - component: database
+    containerPort: 5432
+    envSecretRefs:
+      - database-envs
+    image: postgres:18-alpine
+    name: database
+    runsOn: postgres
+  - component: server
+    containerPort: 8000
+    envSecretRefs:
+      - database-envs
+    envVars:
+      - name: DB_HOST
+        value: score-database-service
+      - name: REDIS
+        value: score-redis-service
+    image: ghcr.io/b-zago/scorevault/webserver:latest
+    imagePullSecret: ghcr-creds
+    name: web-server
+    runsOn: python
+  - component: cache
+    containerPort: 6379
+    image: redis:8-alpine
+    name: redis
+    runsOn: redis
+routes:
+  - host: scorevaultin.zagoapps.com
+    name: web-server-route
+    runsOn: web-server-service
+secrets:
+  - data:
+      SOME_SECRET1: AgBQJOnEORQASmUJDXwIaR3tdXRXP85DgF3LLlb24Wg8TRLCQLY22BfYZTseGhxXPB/nN5glH2AOn2Y6EvN732w6FHfq5axt5dKb9NTqfe2G45F7/cYPDIhfNmtat5yA/VnbEmInh4j5dI2OEZ8znje71VRKvsX8qLugqNJn/2Kv4Gv7RUT583CD+3VjuZd68/nBo+dL/Frni+XVa1iZpKc0JiFrVOth9ElP2oByhmcdzLqwEixLxtKuQu+NOtaiXp/qO0X/RhuL8Yn4HbMzpy00COx52c9Jy6j6WDa092fjrfftGZHT0HQZnlNuEocrcmv50hQY4eT4MNX7lyfUw7imUTOQatJWefgLNldeMOSqR9Kt9jc1TGeRsOzqAIPS/qyeSyfp4ur5VkGvFGJkckEjbTMw82kTgN7ts3perjAgaV5R4NV2NzNJeHLenHGJouf34xmITUmr9Zf/+caDo2aNN8OIrtTcMahuan7gFdJcxQM2oje320EyGVSpbBhyGTRT5PDoAYxCGKXbaFXEvHuyQD1YJncSQLKBavke0ILbsGdx4Gngx8WjSCjPFZ+//GFvvpNnF8nRlvu8cp9/YixHjTOvHmi8r0+HF89UyYeWIkhu1/XKTGEn0S65FipiH+ukSFTM0PbpJKI34QDEmE86YWVXSz9W1+ZeRXgp0gckHNpPfkH+0dzAEFx7214kYiqXr8rQ47M/D311
+      SOME_SECRET2: AgBPNYc30DKR3RRLncOSYHtJzQfunkvPt+OIv7bpRCGfeYi5uS9aIOYLt3PRH3rEYZkyaWialuOFNQt9KFTqHMVm7UbchTNV4lvhg181LXc00X6r4qqocOh6es0azU3A3TQTeX9AU4tD4aU+qK6F00+dQeFl7jhAGVflCjBzSNkQup5wtouMr7PtldgvyZxwc2xogZpYHfE2MwgMIxb4HCcpwDeGKPKGUdM86LMO78rWUBQki3t7/biX3N48RMPWX4+wd/EZXDaUEPL+sQgQLD8JdiHZv2p2cZuIzd1kVvjoRVON4u9yy4hs2UPn7GfzQH1Pe4+NZ/utu4cqLOHBeNbyWqYwtA2dtNHOGVzkaIywvWXqWoRASuCF5pN6xSl/kPOPwqBfj4UrlW8iP7WyYAEVIz01XOgHRZb5yAtNpv9Kz2zp+9vJw50mEYa3N2CqQ+0NJL4Fiz7PvdNEvFlpnPic6Mww7iujjdowdFqseS2M7XL+JIWXqXviThicW98jqhSwk6xVu3jvXcstx9RVYgWeU7n+tdDyjkIrt1Im3BSgrmK0EY+U8Tc2bRN76ofVZ/TsB5Uula/f3YOmbQWQmhnutN7u68z+gkW8E2QRgz4zAQrLPwVlfoXNVWxF5Av1iD+SkVZtf88+lx/b6drGAjeRXC5OuPKToHItSG9yTuom+2laxVwc4uOplR65RJXH3OVn6xmusyraXw==
+    name: database-envs
+    runsOnList:
+      - database
+services:
+  - name: database-service
+    port: 5432
+    runsOn: database
+    targetPort: 5432
+  - name: web-server-service
+    port: 80
+    runsOn: web-server
+    targetPort: 8000
+  - name: redis-service
+    port: 6379
+    runsOn: redis
+    targetPort: 6379

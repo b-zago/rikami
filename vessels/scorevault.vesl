@@ -4,12 +4,15 @@
 {{- cast "Redis" "redis" -}}
 {{- cast "Postgres-deploy" "db" -}}
 {{- cast "Webserver" "webServer" -}}
-{{- global "env" "staging" -}}
 ---
+{{- global "env" "staging" -}}
+
 {{override .chart.Main "description" "Scorevaulting test app"}}
-{{override .chart.Main "name" "scorevaulting"}}
+{{request .chart.Main "name" "Chart name"}}
 {{append .chart.Main "dependencies[0]" (map "version" "0.1.1")}}
 {{$prefix := print .chart.Main.name "-"}}
+
+{{target .chart.Main.name}}
 
 {{override .db.Secrets "data" (secMake ".env.secret" .Globals.Values.env .db.Secrets.name)}}
 
@@ -21,4 +24,10 @@
 {{override .webServer.Deployments "envVars" (envGen "DB_HOST" (print $prefix .db.Services.name) "REDIS" (print $prefix .redis.Services.name))}}
 {{override .webServer.Deployments "envSecretRefs" (list .db.Secrets.name)}}
 {{append .db.Secrets "runsOnList" (list .webServer.Deployments.name)}}
-{{summon}}
+{{summon "values-staging"}}
+
+###-OVERLAY-###
+
+{{global "env" "prod"}}
+{{override .db.Secrets "data" (secMake ".env.secret" .Globals.Values.env .db.Secrets.name)}}
+{{summon "values-prod"}}
