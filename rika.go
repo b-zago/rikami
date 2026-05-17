@@ -47,6 +47,14 @@ func main() {
 		}
 		startSummon(os.Args[2])
 		fmt.Println("Summon done")
+	case "forge":
+
+		if argsNum < 3 {
+			fmt.Println("You need to specify what we will be forging")
+			fmt.Println("Usage: rika forge <new vessel>")
+			os.Exit(2)
+		}
+		StartForgery(os.Args[2])
 	default:
 		fmt.Println("Unknown command")
 		os.Exit(2)
