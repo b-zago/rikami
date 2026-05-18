@@ -12,3 +12,4 @@ profile.cov
 *.test
 go.work
 go.work.sum
+wp

@@ -1,4 +1,4 @@
-{{shard "Postgres-deploy"}}
+{{shard "PostgresDeploy"}}
 
 {{begin "Services"}}
 {{set "name" "database-service"}}

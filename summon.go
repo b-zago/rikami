@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"maps"
@@ -209,6 +211,7 @@ func (smn *Summon) soulGen(outputFile string) string {
 			}
 		}
 	}
+	smn.BindRefs = nil // disable binding for all overlays
 	ExecuteVessel(smn, outputFile)
 	return ""
 }
@@ -365,7 +368,12 @@ func (smn *Summon) envGen(elements ...string) []map[string]string {
 	return finalVal
 }
 
-func SecMake(path string, ns string, name string) map[string]string {
+func (smn *Summon) SecMake(path string, name string) map[string]string {
+	nsAny := smn.ShardMap["Globals"]["Values"]["env"]
+	ns, ok := nsAny.(string)
+	if !ok {
+		panic("Global env must be a string")
+	}
 	envLoad := EnvMake(path)
 	secMap := make(map[string]string)
 
@@ -384,6 +392,49 @@ func SecMake(path string, ns string, name string) map[string]string {
 		secMap[env["name"]] = string(ksBytes)
 	}
 	return secMap
+}
+
+func (smn *Summon) SecRand(keys ...string) map[string]string {
+	// first arg is the name of the secret
+	vals := make(map[string]string)
+	sealedVals := make(map[string]string)
+
+	nsAny := smn.ShardMap["Globals"]["Values"]["env"]
+	ns, ok := nsAny.(string)
+	if !ok {
+		panic("Global env must be a string")
+	}
+
+	for _, s := range keys[1:] {
+		bytes := make([]byte, 8)
+		rand.Read(bytes)
+		// val := hex.EncodeToString(bytes)
+		vals[s] = hex.EncodeToString(bytes)
+
+		ksCmd := exec.Command("kubeseal", "--raw", "--namespace", ns, "--name", keys[0])
+		ksIn, _ := ksCmd.StdinPipe()
+		ksOut, _ := ksCmd.StdoutPipe()
+		err := ksCmd.Start()
+		Check(err)
+		_, err = ksIn.Write(bytes)
+		Check(err)
+		ksIn.Close()
+		ksBytes, _ := io.ReadAll(ksOut)
+		err = ksCmd.Wait()
+		Check(err)
+		sealedVals[s] = string(ksBytes)
+	}
+	secFile := ".env." + keys[0] + ".secret"
+	f, err := os.Create(secFile)
+	Check(err)
+	defer f.Close()
+
+	for k, v := range vals {
+		line := fmt.Sprintf("%s=%s\n", k, v)
+		f.WriteString(line)
+	}
+
+	return sealedVals
 }
 
 func EnvMake(path string) []map[string]string {

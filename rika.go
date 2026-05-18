@@ -86,10 +86,11 @@ func startSummon(vesselName string) {
 		"envGen":   summon.envGen,
 		"global":   summon.globalSet,
 		"conf":     summon.confAdd,
-		"secMake":  SecMake,
+		"secMake":  summon.SecMake,
 		"vessel":   summon.bindAll,
 		"request":  summon.request,
 		"target":   summon.setTarget,
+		"secRand":  summon.SecRand,
 	}
 
 	shardsPath := filepath.Join(Config.ResourcePath, "shards")

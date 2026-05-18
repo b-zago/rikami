@@ -14,7 +14,7 @@
 
 {{target .Chart.Main.name}}
 
-{{override .db.Secrets "data" (secMake ".env.secret" .Globals.Values.env .db.Secrets.name)}}
+{{override .db.Secrets "data" (secMake ".env.secret" .db.Secrets.name)}}
 
 {{override .webServer.Routes "host" "scorevaultin.zagoapps.com"}}
 {{override .webServer.Services "targetPort" 8000}}
