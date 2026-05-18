@@ -10,8 +10,9 @@ import (
 
 var templateMap = map[string]string{
 	"cast":     "{{cast \"%s\" \"%s\"}}",
-	"override": "{{override %s \"%s\" \"%s\"}}",
+	"override": "{{override %s \"%s\" %s}}",
 	"version":  "{{append .Chart.Main \"dependencies[0]\" (map \"version\" \"%s\")}}",
+	"secMake":  "{{override %s \"data\" (secMake \".env.secret\" .Globals.Values.env .%s.Secrets.name)}}",
 }
 
 type Forgery struct {
@@ -55,8 +56,13 @@ func StartForgery(vesselName string) {
 		argsNum := len(args)
 		switch args[0] {
 		case "shard":
-			if argsNum == 2 {
-				definedName := strings.ToLower(args[1])
+			if argsNum == 2 || argsNum == 3 {
+				var definedName string
+				if argsNum == 3 {
+					definedName = args[2]
+				} else {
+					definedName = strings.ToLower(args[1])
+				}
 				extractedReq, ok := extractRequired(args[1])
 				if !ok {
 					break
@@ -65,9 +71,21 @@ func StartForgery(vesselName string) {
 					for _, prop := range v {
 
 						fmt.Printf("%s %s: ", k, prop)
-						var val string
-						fmt.Scanln(&val)
+						scanner.Scan()
+						val := scanner.Text()
 						keyPath := fmt.Sprintf(".%s.%s", definedName, k)
+
+						if strings.HasPrefix(val, "!") {
+							switch val {
+							case "!secMake":
+								sMake := fmt.Sprintf(templateMap["secMake"], keyPath, definedName)
+								forge.TraitsBlock = append(forge.TraitsBlock, sMake)
+								continue
+							default:
+								fmt.Println("No idea what this function is")
+								// refactor to index based loop so that i can reset the iteration here
+							}
+						}
 
 						override := fmt.Sprintf(templateMap["override"], keyPath, prop, val)
 						forge.TraitsBlock = append(forge.TraitsBlock, override)
