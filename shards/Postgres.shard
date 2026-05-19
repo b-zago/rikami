@@ -1,0 +1,24 @@
+{{shard "Postgres"}}
+
+{{begin "Services"}}
+{{set "name" "database-service"}}
+{{set "runsOn" "database"}}
+{{set "port" 5432}}
+{{set "targetPort" 5432}}
+
+{{begin "Secrets"}}
+{{set "name" "database-envs"}}
+{{bind "runsOnList" "Services@runsOn[]" }}
+{{receive "data"}}
+
+{{begin "StatefulSets"}}
+{{bind "name" "Services@runsOn"}}
+{{set "runsOn" "postgres"}}
+{{set "image" "postgres:18-alpine"}}
+{{bind "containerPort" "Services@targetPort"}}
+{{set "component" "database"}}
+{{set "mountPath" "/var/lib/postgresql"}}
+{{set "storage" "1Gi"}}
+{{bind "envSecretRefs" "Secrets@name[]"}}
+
+{{seal}}

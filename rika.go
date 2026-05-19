@@ -71,7 +71,7 @@ func startSummon(vesselName string) {
 		"seal":    summon.endShard,
 		"list":    summon.makeList,
 		"map":     MakeMap,
-		"envMake": EnvMake,
+		"envGen":  summon.envGen,
 		"bind":    summon.bindParts,
 	}
 	vesselFuncMap := template.FuncMap{
@@ -87,7 +87,6 @@ func startSummon(vesselName string) {
 		"global":   summon.globalSet,
 		"conf":     summon.confAdd,
 		"secMake":  summon.SecMake,
-		"vessel":   summon.bindAll,
 		"request":  summon.request,
 		"target":   summon.setTarget,
 		"secRand":  summon.SecRand,

@@ -1,0 +1,18 @@
+env: prod
+---
+deployments:
+  - component: server
+    containerPort: 8000
+    image: myapp:latest
+    imagePullSecret: ghcr-creds
+    name: web-server
+    runsOn: nginx
+routes:
+  - host: myapp.domain.com
+    name: web-server-route
+    runsOn: web-server-service
+services:
+  - name: web-server-service
+    port: 80
+    runsOn: web-server
+    targetPort: 8000
