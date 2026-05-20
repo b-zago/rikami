@@ -41,17 +41,12 @@ For example (shard example and function explanation)
 
 A quick rundown of what's going on:
 
-`{{shard "WebServer"}}` - we declare this is a shard from WebServer.shard file.
-
-`{{begin "Routes"}}` - we start defining a **shard part**.
-
-`{{set "name" "web-server-route"}}` - we set shard's .Routes.name to "web-server-route".
-
-`{{receive "host"}}` - we sign that this shard's .Routes.host field must be provided by a **vessel** (more on vessels below).
-
-`{{bind "name" "Routes@runsOn"}}` - basically we specify here that .Services.name will be equal to same shard's .Routes.runsOn field value. 
-
-`{{seal}}` - we declare that this is the end of the shard.
+- `{{shard "WebServer"}}` - we declare this is a shard from WebServer.shard file.
+- `{{begin "Routes"}}` - we start defining a **shard part**.
+- `{{set "name" "web-server-route"}}` - we set shard's .Routes.name to "web-server-route".
+- `{{receive "host"}}` - we sign that this shard's .Routes.host field must be provided by a **vessel** (more on vessels below).
+- `{{bind "name" "Routes@runsOn"}}` - basically we specify here that .Services.name will be equal to same shard's .Routes.runsOn field value. 
+- `{{seal}}` - we declare that this is the end of the shard.
 
 For more information look into **Shard functions**
 
@@ -90,23 +85,15 @@ Here is a simple example of putting shards together inside a vessel:
 
 And again a quick rundown. For more details refer to **Vessel functions**:
 
-`{{conf "Chart"}}` - signs which shards should be treated as configuration. (Confs are files that will be generated separately from main vessel values. Look at **Confs and Globals** section)
-
-`{{cast "WebServer" "webServer"}}` - we are defining that we will be using `WebServer` shard and we are giving it a defined name of "webServer".
-
-`{{global "env" "staging"}}` - we set a global value for "env" (Look at **Confs and Globals** section)
-
-`{{request .Chart.Main "name" "Chart name"}}` - we will prompt user for chart name. Here we will give it "myapp"
-
-`{{append .Chart.Main "dependencies[0]" (map "version" "0.1.1")}}` - we set Rikami library version using append function.
-
-`{{$prefix := print .Chart.Main.name "-"}}` - we can manipulate data freely and use default Go template functions without a problem.
-
-`{{target .Chart.Main.name}}` - specifies where to create generated chart. 
-
-`{{override .webServer.Routes "host" "scorevaultin.zagoapps.com"}}` - we override .webServer.Routes.host value with "myapp.domain.com"
-
-`{{summon "values-staging"}}` - the above values will be generated into `values-staging.yaml` 
+- `{{conf "Chart"}}` - signs which shards should be treated as configuration. (Confs are files that will be generated separately from main vessel values. Look at **Confs and Globals** section)
+- `{{cast "WebServer" "webServer"}}` - we are defining that we will be using `WebServer` shard and we are giving it a defined name of "webServer".
+- `{{global "env" "staging"}}` - we set a global value for "env" (Look at **Confs and Globals** section)
+- `{{request .Chart.Main "name" "Chart name"}}` - we will prompt user for chart name. Here we will give it "myapp"
+- `{{append .Chart.Main "dependencies[0]" (map "version" "0.1.1")}}` - we set Rikami library version using append function.
+- `{{$prefix := print .Chart.Main.name "-"}}` - we can manipulate data freely and use default Go template functions without a problem.
+- `{{target .Chart.Main.name}}` - specifies where to create generated chart. 
+- `{{override .webServer.Routes "host" "scorevaultin.zagoapps.com"}}` - we override .webServer.Routes.host value with "myapp.domain.com"
+- `{{summon "values-staging"}}` - the above values will be generated into `values-staging.yaml` 
 
 After the first summon we only change the global `env` value and call `{{summon "values-prod"}}`. This will generate the same values file as `values-staging.yaml` but with env value changed. You can think of it as an overlay on top of what was already defined. This is useful especially for automatic secret encryption.
 
