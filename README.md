@@ -110,7 +110,7 @@ Let's say I want to create a vessel for my python application that needs postgre
 
 `rika forge newapp`
 
-(gif example here for sure)
+![Demo](./examples/demo.gif)
 
 Forge scans each shard that you call for fields to **receive** and prompts you automatically.
 

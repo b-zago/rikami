@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -81,13 +82,19 @@ func StartForgery(vesselName string) {
 				if !ok {
 					break
 				}
-				for k, v := range extractedReq {
-					for i := 0; i < len(v); i++ {
+				mapKeys := make([]string, len(extractedReq))
 
-						fmt.Printf("%s %s: ", k, v[i])
+				for k := range extractedReq {
+					mapKeys = append(mapKeys, k)
+				}
+				sort.Strings(mapKeys)
+				for _, v := range mapKeys {
+					for i := 0; i < len(extractedReq[v]); i++ {
+
+						fmt.Printf("%s %s: ", v, extractedReq[v][i])
 						scanner.Scan()
 						val := scanner.Text()
-						keyPath := fmt.Sprintf(".%s.%s", definedName, k)
+						keyPath := fmt.Sprintf(".%s.%s", definedName, v)
 
 						if strings.HasPrefix(val, "!") {
 							ok := forge.inputFuncs(val, keyPath, definedName, scanner)
@@ -97,7 +104,7 @@ func StartForgery(vesselName string) {
 								continue
 							}
 						} else {
-							override := fmt.Sprintf(templateMap["override"], keyPath, v[i], val)
+							override := fmt.Sprintf(templateMap["override"], keyPath, extractedReq[v][i], val)
 							forge.TraitsBlock = append(forge.TraitsBlock, override)
 						}
 					}
@@ -240,6 +247,7 @@ func extractRequired(shardName string) (map[string][]string, bool) {
 			receiveMap[lastPart] = append(receiveMap[lastPart], line[start+1:end])
 		}
 	}
+
 	return receiveMap, true
 }
 
