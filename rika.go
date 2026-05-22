@@ -159,11 +159,13 @@ func ExecuteVessel(smn *Summon, outputfile string) {
 	Check(enc.Encode(smn.Vessel))
 	enc.Close()
 
+	out := bytes.ReplaceAll(buf.Bytes(), []byte("---\n"), nil)
+
 	err := os.MkdirAll(smn.TargetPath, 0755)
 	Check(err)
 	addExt := fmt.Sprintf("%s.yaml", outputfile)
 	writePath := filepath.Join(smn.TargetPath, addExt)
-	Check(os.WriteFile(writePath, buf.Bytes(), 0644))
+	Check(os.WriteFile(writePath, out, 0644))
 
 	// we create main.yaml only on the first run which means adding parts/casting shards wont work on overlays (which is fine)
 	mainPath := filepath.Join(smn.TargetPath, "templates", "main.yaml")

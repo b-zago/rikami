@@ -409,14 +409,15 @@ func (smn *Summon) SecRand(keys ...string) map[string]string {
 		bytes := make([]byte, 8)
 		rand.Read(bytes)
 		// val := hex.EncodeToString(bytes)
-		vals[s] = hex.EncodeToString(bytes)
+		val := hex.EncodeToString(bytes)
+		vals[s] = val
 
 		ksCmd := exec.Command("kubeseal", "--raw", "--namespace", ns, "--name", keys[0])
 		ksIn, _ := ksCmd.StdinPipe()
 		ksOut, _ := ksCmd.StdoutPipe()
 		err := ksCmd.Start()
 		Check(err)
-		_, err = ksIn.Write(bytes)
+		_, err = ksIn.Write([]byte(val))
 		Check(err)
 		ksIn.Close()
 		ksBytes, _ := io.ReadAll(ksOut)
@@ -424,7 +425,7 @@ func (smn *Summon) SecRand(keys ...string) map[string]string {
 		Check(err)
 		sealedVals[s] = string(ksBytes)
 	}
-	secFile := ".env." + keys[0] + ".secret"
+	secFile := ".env." + ns + "." + keys[0] + ".secret"
 	f, err := os.Create(secFile)
 	Check(err)
 	defer f.Close()

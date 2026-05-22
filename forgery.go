@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -14,11 +15,12 @@ var templateMap = map[string]string{
 	"override": "{{override %s \"%s\" %s}}",
 	"append":   "{{append %s \"%s\" %s}}",
 	"version":  "{{append .Chart.Main \"dependencies[0]\" (map \"version\" \"%s\")}}",
-	"secMake":  "{{override %s \"data\" (secMake \".env.secret\" .Globals.Values.env .%s.Secrets.name)}}",
-	"envMake":  "{{override %s \"envVars\" (envMake \".env\")}}",
-	"secRand":  "{{override %s \"data\" (secRand %s %s)}}",
+	"secMake":  "{{override %s \"data\" (secMake \"%s\" (print $prefix .%s.Secrets.name))}}",
+	"envMake":  "{{override %s \"envVars\" (envMake \"%s\")}}",
+	"secRand":  "{{override %s \"data\" (secRand (print $prefix %s) %s)}}",
 	"appendSec": `{{override %s "envSecretRefs" (list %s.Secrets.name)}}
 {{append %s.Secrets "runsOnList" (list %s.name)}}`,
+	"overrideEnvGen": `{{override %s "envVars" (envGen %s)}}`,
 }
 
 type Forgery struct {
@@ -37,8 +39,8 @@ func StartForgery(vesselName string) {
 		CastBlock:     []string{"{{cast \"Chart\" \"Chart\"}}"},
 		TraitsBlock:   []string{},
 		Version:       "",
-		StandardClose: "{{summon \"values-staging\"}}",
-		StandardOpen: `{{- global "env" "staging" -}}
+		StandardClose: "{{summon (print \"values-\" .Globals.Values.env)}}",
+		StandardOpen: `{{- global "env" "prod" -}}
 
 {{override .Chart.Main "description" "App description"}}
 {{request .Chart.Main "name" "Chart name"}}
@@ -65,7 +67,7 @@ func StartForgery(vesselName string) {
 
 		argsNum := len(args)
 		if strings.HasPrefix(args[0], "!") {
-			forge.execFuncs(args, argsNum)
+			forge.execFuncs(args, argsNum, scanner)
 			continue
 		}
 		// here customExec
@@ -128,7 +130,7 @@ func StartForgery(vesselName string) {
 	}
 }
 
-func (forge *Forgery) execFuncs(args []string, argsNum int) bool {
+func (forge *Forgery) execFuncs(args []string, argsNum int, scanner *bufio.Scanner) bool {
 	// maybe refacotr to somtehing nicer later
 	switch args[0] {
 	case "!appendSec":
@@ -139,6 +141,17 @@ func (forge *Forgery) execFuncs(args []string, argsNum int) bool {
 			return false
 		}
 		execFunc := fmt.Sprintf(templateMap["appendSec"], args[2], args[1], args[1], args[2])
+		forge.TraitsBlock = append(forge.TraitsBlock, execFunc)
+	case "!overrideEnvGen":
+		if argsNum < 2 {
+			fmt.Println("Invalid number of args")
+			return false
+		}
+		fmt.Println("Provide key-value pairs. Keys must be wrapped in quotes. Values must be wrapped in quotes unless they reference other shard part value")
+		scanner.Scan()
+		scanArgs := strings.Fields(scanner.Text())
+		envGenArg := strings.Join(scanArgs, " ")
+		execFunc := fmt.Sprintf(templateMap["overrideEnvGen"], args[1], envGenArg)
 		forge.TraitsBlock = append(forge.TraitsBlock, execFunc)
 	case "!override":
 		// usage: !override <shard part path> <key> <value>
@@ -174,10 +187,16 @@ func (forge *Forgery) execFuncs(args []string, argsNum int) bool {
 func (forge *Forgery) inputFuncs(cmd string, keyPath string, definedName string, scanner *bufio.Scanner) bool {
 	switch cmd {
 	case "!secMake":
-		sMake := fmt.Sprintf(templateMap["secMake"], keyPath, definedName)
+		fmt.Print("Provide secret .env path: ")
+		scanner.Scan()
+		arg := scanner.Text()
+		sMake := fmt.Sprintf(templateMap["secMake"], keyPath, arg, definedName)
 		forge.TraitsBlock = append(forge.TraitsBlock, sMake)
 	case "!envMake":
-		eMake := fmt.Sprintf(templateMap["envMake"], keyPath)
+		fmt.Print("Provide .env path: ")
+		scanner.Scan()
+		arg := scanner.Text()
+		eMake := fmt.Sprintf(templateMap["envMake"], keyPath, arg)
 		forge.TraitsBlock = append(forge.TraitsBlock, eMake)
 	case "!secRand":
 		fmt.Println("Provide keys separated by spaces. No need for quotes")
@@ -256,12 +275,31 @@ func (forge *Forgery) copyMake() string {
 	for _, v := range forge.TraitsBlock {
 		if strings.Contains(v, ".Globals") || strings.Contains(v, "secMake") || strings.Contains(v, "secRand") {
 			globalsPresent = append(globalsPresent, v)
+			continue
+		}
+		if strings.Contains(v, "\"host\"") {
+			globalsPresent = append(globalsPresent, stagingifyHost(v))
 		}
 	}
-	formatStr := `{{global "env" "prod"}}
+	formatStr := `{{global "env" "staging"}}
 %s
-{{summon "values-prod"}}`
+{{summon (print "values-" .Globals.Values.env)}}`
 
 	globalsStr := strings.Join(globalsPresent, "\n")
 	return fmt.Sprintf(formatStr, globalsStr)
+}
+
+func stagingifyHost(input string) string {
+	re := regexp.MustCompile(`("host"\s+)"([^"]*)"`)
+	return re.ReplaceAllStringFunc(input, func(m string) string {
+		parts := re.FindStringSubmatch(m)
+		prefix, host := parts[1], parts[2]
+
+		if idx := strings.IndexByte(host, '.'); idx != -1 {
+			host = host[:idx] + "-staging" + host[idx:]
+		} else {
+			host = host + "-staging"
+		}
+		return prefix + `"` + host + `"`
+	})
 }

@@ -2,6 +2,10 @@
 
 A CLI tool to help me manage my Kubernetes manifests.
 
+In short it is used to automate generating Helm charts (mainly values files) with the help of preconfigured templates and functions.
+
+Generated charts are using [rikami chart library](https://github.com/b-zago/rikami-charts) to create desired resources.
+
 ## Chart generation
 
 Primary usage of **rika** is to generate charts meant for [rikami chart library](https://github.com/b-zago/rikami-charts) to consume.
@@ -100,6 +104,7 @@ After the first summon we only change the global `env` value and call `{{summon 
 Vessels are separated by 3 blocks with "---". First one is strictly for `conf`. Second is strictly for `cast` (although you could also set globals there). And last one is for everything else.
 
 After we have our vessel ready we can now `rika summon <vessel>` to generate the chart. Where vessel is the filename without ".shard" extension.
+
 Generated chart using the above example can be found in [examples/myapp/](./examples/myapp/)
 
 For more examples take a look at [vessels/](./vessels/). Vessels there are using shards from [shards/](./shards/)
@@ -116,7 +121,7 @@ Forge scans each shard that you call for fields to **receive** and prompts you a
 
 Here for postgres secret data we used ***input function*** `!secRand` which takes keys and will put ***vessel function*** `secRand` as value to override postgres secret data with.
 
-We also used ***forge function*** `!appendSec` to append postgres secret to app's deployment. Since forge also creates an overlay for values-prod, this will be copied to overlay as well to encrypt secrets for another env specifically.
+We also used ***forge function*** `!appendSec` to append postgres secret to app's deployment. Since forge also creates an overlay for values-staging, this will be copied to overlay as well to encrypt secrets for another env specifically.
 
 Forge also applies the standard `Chart.shard` as conf.
 
@@ -172,6 +177,7 @@ Functions have `!` prefix
 - `!override <shardPath> <key:string> <value:any>` - works same as regular override. You don't wrap `key` in quotes.
 - `!append <shardPath> <targetPathString:string> <value:list|map>` - works same as regular append. You don't wrap `targetPathString` in quotes.
 - `!appendSec <definedName:string> <shardPath>` - it tries to detect `Secrets` part in a shard and it appends `envSecretRef` to specified `shardPath` as well as updating `runsOnList` of the secret. Note that you need to add "." before paths. 
+- `!overrideEnvGen <shardPath>` - easy way to override `envVars` with `envGen`. Will prompt for name-value pairs. 
 - `shard <filename:string>` - add shard to the currently forged vessel.
 - `done` - finish forging and save.
 - `exit` - does exactly that. Nothing gets saved.
@@ -187,5 +193,5 @@ Functions have `!` prefix
 - avoid mixing same types of shards (that have the same name labels for example) in the same vessel
 - if you define 2 charts from the same file the bindLabels (defined in config file) will get the incrementing suffix (like "*-1" "*-2" and so on)
 - you can only append/override basing off of specified shard parts.
-- shard file names and defined names can't contain '-' as it break Go's templating language. Use camelCase instead.
+- shard file names and defined names can't contain '-' as it break Go's templating. Use camelCase instead.
 - after the first `{{summon}}` binds are generally disabled. Meaning sources that were bound until the first `{{summon}}` will stay in that state, but they will not bind automatically after that if you change the bind target. Use overlays for small and precise changes, not relying on binding behaviour.
