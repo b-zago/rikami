@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -30,13 +31,17 @@ func main() {
 	Check(err)
 	confPath := filepath.Join(userDefaultConf, "rikami", "conf")
 
-	Config = LoadConf(confPath)
-
 	argsNum := len(os.Args)
 	if argsNum < 2 {
 		fmt.Println("Well you kinda have to tell me what to do")
 		os.Exit(2)
 	}
+
+	summonCmd := flag.NewFlagSet("summon", flag.ExitOnError)
+	summonLocal := summonCmd.Bool("local", false, "Determines if chart will be created locally")
+	summonEnvs := summonCmd.String("envs", "", "Separate with ',' .env files to send over to rikami controller")
+	summonTarget := summonCmd.String("target", "", "Overrides output target path of the chart")
+	summonConf := summonCmd.String("conf", "", "Specify the config for this specific command")
 
 	switch os.Args[1] {
 	case "summon":
@@ -45,7 +50,17 @@ func main() {
 			fmt.Println("Usage: rika summon <vessel>")
 			os.Exit(2)
 		}
-		startSummon(os.Args[2])
+		summonCmd.Parse(os.Args[3:])
+		if *summonConf != "" {
+			Config = LoadConf(*summonConf)
+		} else {
+			Config = LoadConf(confPath)
+		}
+		if *summonLocal {
+			startSummonLocal(os.Args[2], *summonTarget)
+		} else {
+			startSummon(os.Args[2], *summonEnvs)
+		}
 		fmt.Println("Summon done")
 	case "forge":
 
@@ -55,14 +70,38 @@ func main() {
 			os.Exit(2)
 		}
 		StartForgery(os.Args[2])
+	case "config":
+		MakeConf(confPath)
+
 	default:
 		fmt.Println("Unknown command")
 		os.Exit(2)
 	}
 }
 
-func startSummon(vesselName string) {
+func startSummon(vsl string, envs string) {
+	var envSlice []EnvEntry
+	if envs != "" {
+		for p := range strings.SplitSeq(envs, ",") {
+			envPath := filepath.Join(p)
+			f, err := os.ReadFile(envPath)
+			Check(err)
+			newEntry := EnvEntry{
+				EnvName: filepath.Base(envPath),
+				EnvVals: ParseEnvFile(string(f)),
+			}
+			envSlice = append(envSlice, newEntry)
+		}
+	}
+	req := ForgeRequest(vsl, envSlice)
+	fmt.Println(req)
+	err := req.Send()
+	Check(err)
+}
+
+func startSummonLocal(vesselName string, targetOverride string) {
 	summon := NewSummon()
+	summon.TargetOverride = targetOverride
 	shardFuncMap := template.FuncMap{
 		"set":     summon.setShardVal,
 		"begin":   summon.beginShardPart,

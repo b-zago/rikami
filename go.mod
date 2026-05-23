@@ -1,4 +1,4 @@
-module rikami/rika
+module github.com/b-zago/rikami
 
 go 1.26.2
 

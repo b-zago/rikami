@@ -11,6 +11,9 @@ import (
 type Conf struct {
 	BindLabels   []string
 	ResourcePath string
+	UserID       string
+	Token        string
+	URL          string
 }
 
 func fieldValidation(name reflect.Value) bool {
@@ -38,6 +41,10 @@ func LoadConf(path string) *Conf {
 		// fmt.Println(split, v)
 		if len(split) != 2 {
 			panic(fmt.Sprintf("Invalid config, please validate at %s", path))
+		}
+		if split[1] == "" {
+			fmt.Printf("Missing value for %s in config, please make an adjustment\n", split[0])
+			return MakeConf(path)
 		}
 		vList := strings.Split(split[1], ",")
 		if len(vList) > 1 {

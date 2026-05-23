@@ -40,6 +40,7 @@ type Summon struct {
 	Globals          map[string]any
 	ConfShards       []string
 	TargetPath       string
+	TargetOverride   string
 }
 
 func NewSummon() *Summon {
@@ -118,7 +119,11 @@ func (smn *Summon) request(shardPart map[string]any, key string, name string) bo
 }
 
 func (smn *Summon) setTarget(path string) bool {
-	smn.TargetPath = path
+	if smn.TargetOverride != "" {
+		smn.TargetPath = smn.TargetOverride
+	} else {
+		smn.TargetPath = path
+	}
 	return true
 }
 
@@ -242,6 +247,22 @@ func MakeMap(elements ...any) map[string]any {
 		} else {
 			panic("Mismatched key-values in a map generation")
 		}
+	}
+	return newMap
+}
+
+func ParseEnvFile(data string) map[string]string {
+	newMap := make(map[string]string)
+	for line := range strings.SplitSeq(data, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		key, value, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		newMap[strings.TrimSpace(key)] = value
 	}
 	return newMap
 }
@@ -425,7 +446,7 @@ func (smn *Summon) SecRand(keys ...string) map[string]string {
 		Check(err)
 		sealedVals[s] = string(ksBytes)
 	}
-	secFile := ".env." + ns + "." + keys[0] + ".secret"
+	secFile := ".env." + ns + "." + keys[0] + ".secret.random"
 	f, err := os.Create(secFile)
 	Check(err)
 	defer f.Close()

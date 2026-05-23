@@ -6,6 +6,8 @@ In short it is used to automate generating Helm charts (mainly values files) wit
 
 Generated charts are using [rikami chart library](https://github.com/b-zago/rikami-charts) to create desired resources.
 
+This readme might not be up to date as I'm constantly developing this project, but it should contain most of the functionality.
+
 ## Chart generation
 
 Primary usage of **rika** is to generate charts meant for [rikami chart library](https://github.com/b-zago/rikami-charts) to consume.
@@ -195,3 +197,7 @@ Functions have `!` prefix
 - you can only append/override basing off of specified shard parts.
 - shard file names and defined names can't contain '-' as it break Go's templating. Use camelCase instead.
 - after the first `{{summon}}` binds are generally disabled. Meaning sources that were bound until the first `{{summon}}` will stay in that state, but they will not bind automatically after that if you change the bind target. Use overlays for small and precise changes, not relying on binding behaviour.
+
+## TODO
+
+- [ ] improve config management
