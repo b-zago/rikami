@@ -64,6 +64,7 @@ func main() {
 		fmt.Println("Summon done")
 	case "forge":
 
+		Config = LoadConf(confPath)
 		if argsNum < 3 {
 			fmt.Println("You need to specify what we will be forging")
 			fmt.Println("Usage: rika forge <new vessel>")
