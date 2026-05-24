@@ -77,17 +77,17 @@ func main() {
 		}
 		StartForgery(os.Args[2])
 	case "app":
-		if *appConf != "" {
-			Config = LoadConf(*appConf)
-		} else {
-			Config = LoadConf(confPath)
-		}
 		if argsNum < 4 {
 			fmt.Println("You need to specify the app action and pattern.")
 			os.Exit(2)
 		}
 
 		appCmd.Parse(os.Args[4:])
+		if *appConf != "" {
+			Config = LoadConf(*appConf)
+		} else {
+			Config = LoadConf(confPath)
+		}
 
 		if *appLocal {
 			AppCallLocal(os.Args[2], os.Args[3], *appParam)
