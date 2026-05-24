@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 )
@@ -21,6 +20,7 @@ var templateMap = map[string]string{
 	"appendSec": `{{override %s "envSecretRefs" (list %s.Secrets.name)}}
 {{append %s.Secrets "runsOnList" (list %s.name)}}`,
 	"overrideEnvGen": `{{override %s "envVars" (envGen %s)}}`,
+	"chartDomain":    `{{override %s "%s" (print .Chart.Main.name "%s")}}`,
 }
 
 type Forgery struct {
@@ -99,7 +99,7 @@ func StartForgery(vesselName string) {
 						keyPath := fmt.Sprintf(".%s.%s", definedName, v)
 
 						if strings.HasPrefix(val, "!") {
-							ok := forge.inputFuncs(val, keyPath, definedName, scanner)
+							ok := forge.inputFuncs(val, keyPath, definedName, extractedReq[v][i], scanner)
 							if !ok {
 								// decrement loop
 								i--
@@ -184,7 +184,7 @@ func (forge *Forgery) execFuncs(args []string, argsNum int, scanner *bufio.Scann
 	return true
 }
 
-func (forge *Forgery) inputFuncs(cmd string, keyPath string, definedName string, scanner *bufio.Scanner) bool {
+func (forge *Forgery) inputFuncs(cmd string, keyPath string, definedName string, key string, scanner *bufio.Scanner) bool {
 	switch cmd {
 	case "!secMake":
 		fmt.Print("Provide secret .env path: ")
@@ -208,6 +208,9 @@ func (forge *Forgery) inputFuncs(cmd string, keyPath string, definedName string,
 		arg := strings.Join(args, " ")
 		sRand := fmt.Sprintf(templateMap["secRand"], keyPath, keyPath+".name", arg)
 		forge.TraitsBlock = append(forge.TraitsBlock, sRand)
+	case "!chartDomain":
+		inputFunc := fmt.Sprintf(templateMap["chartDomain"], keyPath, key, "."+Config.Domain)
+		forge.TraitsBlock = append(forge.TraitsBlock, inputFunc)
 	default:
 		fmt.Println("No idea what this function is")
 		return false
@@ -278,7 +281,7 @@ func (forge *Forgery) copyMake() string {
 			continue
 		}
 		if strings.Contains(v, "\"host\"") {
-			globalsPresent = append(globalsPresent, stagingifyHost(v))
+			globalsPresent = append(globalsPresent, appendStagingHost(v))
 		}
 	}
 	formatStr := `{{global "env" "staging"}}
@@ -289,17 +292,6 @@ func (forge *Forgery) copyMake() string {
 	return fmt.Sprintf(formatStr, globalsStr)
 }
 
-func stagingifyHost(input string) string {
-	re := regexp.MustCompile(`("host"\s+)"([^"]*)"`)
-	return re.ReplaceAllStringFunc(input, func(m string) string {
-		parts := re.FindStringSubmatch(m)
-		prefix, host := parts[1], parts[2]
-
-		if idx := strings.IndexByte(host, '.'); idx != -1 {
-			host = host[:idx] + "-staging" + host[idx:]
-		} else {
-			host = host + "-staging"
-		}
-		return prefix + `"` + host + `"`
-	})
+func appendStagingHost(input string) string {
+	return strings.ReplaceAll(input, "."+Config.Domain, "-staging."+Config.Domain)
 }

@@ -14,6 +14,7 @@ type Conf struct {
 	UserID       string
 	Token        string
 	URL          string
+	Domain       string
 }
 
 func fieldValidation(name reflect.Value) bool {

@@ -6,9 +6,11 @@ In short it is used to automate generating Helm charts (mainly values files) wit
 
 Generated charts are using [rikami chart library](https://github.com/b-zago/rikami-charts) to create desired resources.
 
+There is also a [rikami api](https://github.com/b-zago/rikami-api) which enables the process of deployment to be fully automatic. It generates charts from application templates available in it's repo and pushes them directly to a repo containing k8s manifests. 
+
 This readme might not be up to date as I'm constantly developing this project, but it should contain most of the functionality.
 
-## Chart generation
+## Chart generation (Locally)
 
 Primary usage of **rika** is to generate charts meant for [rikami chart library](https://github.com/b-zago/rikami-charts) to consume.
 
@@ -18,7 +20,7 @@ This leverages Go's template engine as "presets" (called "shards") for commonly 
 **Vessels** are composed with **Shards**
 
 ### Shards
-For example (shard example and function explanation)
+For example 
 ```
 
 {{shard "WebServer"}}
@@ -105,7 +107,7 @@ After the first summon we only change the global `env` value and call `{{summon 
 
 Vessels are separated by 3 blocks with "---". First one is strictly for `conf`. Second is strictly for `cast` (although you could also set globals there). And last one is for everything else.
 
-After we have our vessel ready we can now `rika summon <vessel>` to generate the chart. Where vessel is the filename without ".shard" extension.
+After we have our vessel ready we can now `rika summon <vessel> -local` to generate the chart. Where vessel is the filename without ".shard" extension. We also pass `-local` flag to do this locally instead of connecting to **rikami api**.
 
 Generated chart using the above example can be found in [examples/myapp/](./examples/myapp/)
 
@@ -136,6 +138,42 @@ Generated vessel with the example above can be found in [exmaples/forge/](./exam
 Configuration shards data will be generated alongside the main vessel data. Configuration shards should only have one part called `Main` and need to be signed properly in the vessel (refer to **Functions** section)
 
 Globals are key-value pairs that will be generated outside the main vessel groups, at the top level of a file. You can access global values as `.Globals.Values.<key>`. To set global values refer to **Functions**. Global value `env` must be set.
+
+## Commands
+
+### rika summon <vessel>
+
+Summons a vessel as a generated chart. Takes these flags:
+
+- `-local` - makes chart generation happen locally instead of connecting to rikami api.
+- `-target` - overrides the path of where the chart will be generated.
+- `-envs` - Optional. Separated .env files to send over to rikami api so that it can generate the chart upon them.
+- `-conf` - Specifies config file to use for that specific command execution.
+
+### rika forge <vessel>
+
+Generates new vessel and saves it into the specified resource path found in config file.
+
+You specify the rikami chart library version and then customize the vessel to your needs.
+
+More information about what you can do can be found in [Forge functions and commands](#forge-functions-and-commands) and [Forge input functions](#forge-input-functions) sections.
+
+### rika app <action> <pattern> [parameter]
+
+Pass `-local` flag to execute locally. Otherwise it will send requests to rikami api.
+
+Parameters description:
+
+- `<action>` - kind of action to do with the app. Actions listed below.
+- `<pattern>` - this can be just the name of the app (which should be folder name) or a glob pattern using * as wildcards. When using wildcards you should wrap your argument with quotes, since shell can get confused easily.
+- `[parameter]` - Optional. Applies for `update`, `sleep` and `awake` actions.
+
+#### Actions
+
+- `kill` - Deletes the directory/directories and all of its contents. Effectively removing the generated chart.
+- `sleep` - Changes the name of **values-*.yaml** files to add '_' prefix. Effectively disabling it with a GitOps solution in place and configured correctly.
+- `awake` - Removes '_' prefix from **values-*.yaml** files.
+- `update` - Updated rikami library chart version.
 
 ## Functions
 
@@ -187,7 +225,8 @@ Functions have `!` prefix
 ### Forge input functions
 - `!secMake` - returns `secMake` function with .env.secret as filepath 
 - `!envMake` - returns `envMake` function with .env as filepath 
-- `!secRand` - returns `secRand` function and will prompt for keys.
+- `!secRand` - returns `secRand` function and will prompt for keys
+- `!chartDomain` - returns concatenated chart name and domain that is set in config
 
 ## Important notes
 - configuration shards should have only one part `Main`

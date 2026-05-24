@@ -43,6 +43,9 @@ func main() {
 	summonTarget := summonCmd.String("target", "", "Overrides output target path of the chart")
 	summonConf := summonCmd.String("conf", "", "Specify the config for this specific command")
 
+	appCmd := flag.NewFlagSet("app", flag.ExitOnError)
+	appLocal := appCmd.Bool("local", false, "Determines if app subcommand will be run locally")
+
 	switch os.Args[1] {
 	case "summon":
 		if argsNum < 3 {
@@ -71,6 +74,27 @@ func main() {
 			os.Exit(2)
 		}
 		StartForgery(os.Args[2])
+	case "app":
+		Config = LoadConf(confPath)
+
+		if argsNum < 4 {
+			fmt.Println("You need to specify the app action and pattern.")
+			os.Exit(2)
+		}
+
+		appParam := ""
+		if argsNum > 4 {
+			appParam = os.Args[4]
+		}
+
+		if *appLocal {
+			AppCallLocal(os.Args[2], os.Args[3], appParam)
+		} else {
+			req := NewAppRequest(os.Args[2], os.Args[3], appParam)
+			err := req.Send()
+			Check(err)
+		}
+
 	case "config":
 		MakeConf(confPath)
 
