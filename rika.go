@@ -46,6 +46,7 @@ func main() {
 	appCmd := flag.NewFlagSet("app", flag.ExitOnError)
 	appLocal := appCmd.Bool("local", false, "Determines if app subcommand will be run locally")
 	appParam := appCmd.String("p", "", "App subcommand parameter")
+	appConf := appCmd.String("conf", "", "Specify the config for this specific command")
 
 	switch os.Args[1] {
 	case "summon":
@@ -76,8 +77,11 @@ func main() {
 		}
 		StartForgery(os.Args[2])
 	case "app":
-		Config = LoadConf(confPath)
-
+		if *appConf != "" {
+			Config = LoadConf(*appConf)
+		} else {
+			Config = LoadConf(confPath)
+		}
 		if argsNum < 4 {
 			fmt.Println("You need to specify the app action and pattern.")
 			os.Exit(2)
