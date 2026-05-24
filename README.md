@@ -158,7 +158,7 @@ You specify the rikami chart library version and then customize the vessel to yo
 
 More information about what you can do can be found in [Forge functions and commands](#forge-functions-and-commands) and [Forge input functions](#forge-input-functions) sections.
 
-### rika app <action> <pattern> [parameter]
+### rika app <action> <pattern> [-p parameter]
 
 Pass `-local` flag to execute locally. Otherwise it will send requests to rikami api.
 
@@ -166,7 +166,7 @@ Parameters description:
 
 - `<action>` - kind of action to do with the app. Actions listed below.
 - `<pattern>` - this can be just the name of the app (which should be folder name) or a glob pattern using * as wildcards. When using wildcards you should wrap your argument with quotes, since shell can get confused easily.
-- `[parameter]` - Optional. Applies for `update`, `sleep` and `awake` actions.
+- `[-p parameter]` - Optional. Applies for `update`, `sleep` and `awake` actions.
 
 #### Actions
 

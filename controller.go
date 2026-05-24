@@ -101,7 +101,7 @@ func (r AppRequest) Send() error {
 		return fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	fmt.Println(resp.Message)
+	fmt.Println("Response:", resp.Message)
 
 	return nil
 }

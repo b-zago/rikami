@@ -45,6 +45,7 @@ func main() {
 
 	appCmd := flag.NewFlagSet("app", flag.ExitOnError)
 	appLocal := appCmd.Bool("local", false, "Determines if app subcommand will be run locally")
+	appParam := appCmd.String("p", "", "App subcommand parameter")
 
 	switch os.Args[1] {
 	case "summon":
@@ -82,15 +83,12 @@ func main() {
 			os.Exit(2)
 		}
 
-		appParam := ""
-		if argsNum > 4 {
-			appParam = os.Args[4]
-		}
+		appCmd.Parse(os.Args[4:])
 
 		if *appLocal {
-			AppCallLocal(os.Args[2], os.Args[3], appParam)
+			AppCallLocal(os.Args[2], os.Args[3], *appParam)
 		} else {
-			req := NewAppRequest(os.Args[2], os.Args[3], appParam)
+			req := NewAppRequest(os.Args[2], os.Args[3], *appParam)
 			err := req.Send()
 			Check(err)
 		}
