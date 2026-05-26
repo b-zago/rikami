@@ -4,7 +4,7 @@ Typical workflow for both local work and with API can be found [here](https://gi
 
 ## Summary
 
-Rika is a CLI tool to help me automate process of deployment to my cluster.
+Rika is a Helm chart generation and deployment automation CLI.
 
 In short it is used to automate generating Helm charts with the help of preconfigured templates and functions and deploying that helm chart as an application directly to the cluster.
 
