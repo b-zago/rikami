@@ -4,23 +4,25 @@
 {{cast "WebServer" "web"}}
 {{cast "Postgres" "db"}}
 ---
-{{append .Chart.Main "dependencies[0]" (map "version" "0.1.11")}}
-{{- global "env" "staging" -}}
+{{append .Chart.Main "dependencies[0]" (map "version" "0.1.13")}}
+{{- global "env" "prod" -}}
 
 {{override .Chart.Main "description" "App description"}}
 {{request .Chart.Main "name" "Chart name"}}
 {{$prefix := print .Chart.Main.name "-"}}
 
 {{target .Chart.Main.name}}
-
-{{override .web.Routes "host" "newapp.domain.com"}}
-{{override .web.Services "targetPort" 8000}}
+		
 {{override .web.Deployments "image" "newapp:latest"}}
 {{override .web.Deployments "runsOn" "python"}}
-{{override .db.Secrets "data" (secRand .db.Secrets.name "POSTGRES_DB" "POSTGRES_PASSWORD" "POSTGRES_USER")}}
+{{override .web.Routes "host" (print .Chart.Main.name ".zagoapps.com")}}
+{{override .web.Services "targetPort" 8000}}
+{{override .db.Secrets "data" (secRand (print $prefix .db.Secrets.name) "POSTGRES_DB" "POSTGRES_PASSWORD" "POSTGRES_USER")}}
+{{override .db.StatefulSets "image" "postgres:18-alpine"}}
 {{override .web.Deployments "envSecretRefs" (list .db.Secrets.name)}}
 {{append .db.Secrets "runsOnList" (list .web.Deployments.name)}}
-{{summon "values-staging"}}
-{{global "env" "prod"}}
-{{override .db.Secrets "data" (secRand .db.Secrets.name "POSTGRES_DB" "POSTGRES_PASSWORD" "POSTGRES_USER")}}
-{{summon "values-prod"}}
+{{summon (print "values-" .Globals.Values.env)}}
+{{global "env" "staging"}}
+{{override .web.Routes "host" (print .Chart.Main.name "-staging.zagoapps.com")}}
+{{override .db.Secrets "data" (secRand (print $prefix .db.Secrets.name) "POSTGRES_DB" "POSTGRES_PASSWORD" "POSTGRES_USER")}}
+{{summon (print "values-" .Globals.Values.env)}}

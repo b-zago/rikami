@@ -1,14 +1,13 @@
-env: prod
----
+env: staging
 deployments:
   - component: server
     containerPort: 8000
-    image: myapp:latest
+    image: app:latest
     imagePullSecret: ghcr-creds
     name: web-server
-    runsOn: nginx
+    runsOn: python
 routes:
-  - host: myapp.domain.com
+  - host: app-staging.zagoapps.com
     name: web-server-route
     runsOn: web-server-service
 services:

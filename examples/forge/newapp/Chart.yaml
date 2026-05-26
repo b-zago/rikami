@@ -3,7 +3,7 @@ appVersion: "1.0"
 dependencies:
   - name: rikami
     repository: oci://ghcr.io/b-zago/rikami-charts
-    version: 0.1.11
+    version: 0.1.13
 description: App description
 name: newapp
 type: application

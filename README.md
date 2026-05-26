@@ -1,12 +1,16 @@
 # Rikami
 
-A CLI tool to help me manage my Kubernetes manifests.
+Typical workflow for both local work and with API can be found [here](https://github.com/b-zago/k3s-cluster#deployments). 
 
-In short it is used to automate generating Helm charts (mainly values files) with the help of preconfigured templates and functions.
+## Summary
+
+Rika is a CLI tool to help me automate process of deployment to my cluster.
+
+In short it is used to automate generating Helm charts with the help of preconfigured templates and functions and deploying that helm chart as an application directly to the cluster.
 
 Generated charts are using [rikami chart library](https://github.com/b-zago/rikami-charts) to create desired resources.
 
-There is also a [rikami api](https://github.com/b-zago/rikami-api) which enables the process of deployment to be fully automatic. It generates charts from application templates available in it's repo and pushes them directly to a repo containing k8s manifests. 
+With the help of [rikami api](https://github.com/b-zago/rikami-api) process of deployment can be fully automatic. It generates charts from application templates available in it's repo and pushes them directly to a target repo. 
 
 This readme might not be up to date as I'm constantly developing this project, but it should contain most of the functionality.
 
@@ -69,39 +73,38 @@ Here is a simple example of putting shards together inside a vessel:
 {{conf "Chart"}}
 ---
 {{cast "Chart" "Chart"}}
-{{cast "WebServer" "webServer"}}
+{{cast "WebServer" "web"}}
 ---
-{{global "env" "staging"}}
+{{append .Chart.Main "dependencies[0]" (map "version" "0.1.12")}}
+{{- global "env" "prod" -}}
 
-{{override .Chart.Main "description" "myapp description"}}
+{{override .Chart.Main "description" "App description"}}
 {{request .Chart.Main "name" "Chart name"}}
-{{append .Chart.Main "dependencies[0]" (map "version" "0.1.1")}}
 {{$prefix := print .Chart.Main.name "-"}}
 
 {{target .Chart.Main.name}}
-
-{{override .webServer.Routes "host" "myapp.domain.com"}}
-{{override .webServer.Services "targetPort" 8000}}
-{{override .webServer.Deployments "image" "myapp:latest"}}
-{{override .webServer.Deployments "runsOn" "nginx"}}
-
-{{summon "values-staging"}}
-
-{{global "env" "prod"}}
-{{summon "values-prod"}}
+		
+{{override .web.Deployments "image" "app:latest"}}
+{{override .web.Deployments "runsOn" "python"}}
+{{override .web.Routes "host" (print .Chart.Main.name ".zagoapps.com")}}
+{{override .web.Services "targetPort" 8000}}
+{{summon (print "values-" .Globals.Values.env)}}
+{{global "env" "staging"}}
+{{override .web.Routes "host" (print .Chart.Main.name "-staging.zagoapps.com")}}
+{{summon (print "values-" .Globals.Values.env)}}
 ```
 
 And again a quick rundown. For more details refer to **Vessel functions**:
 
 - `{{conf "Chart"}}` - signs which shards should be treated as configuration. (Confs are files that will be generated separately from main vessel values. Look at **Confs and Globals** section)
-- `{{cast "WebServer" "webServer"}}` - we are defining that we will be using `WebServer` shard and we are giving it a defined name of "webServer".
+- `{{cast "WebServer" "web"}}` - we are defining that we will be using `WebServer` shard and we are giving it a defined name of "web".
 - `{{global "env" "staging"}}` - we set a global value for "env" (Look at **Confs and Globals** section)
 - `{{request .Chart.Main "name" "Chart name"}}` - we will prompt user for chart name. Here we will give it "myapp"
 - `{{append .Chart.Main "dependencies[0]" (map "version" "0.1.1")}}` - we set Rikami library version using append function.
 - `{{$prefix := print .Chart.Main.name "-"}}` - we can manipulate data freely and use default Go template functions without a problem.
 - `{{target .Chart.Main.name}}` - specifies where to create generated chart. 
-- `{{override .webServer.Routes "host" "scorevaultin.zagoapps.com"}}` - we override .webServer.Routes.host value with "myapp.domain.com"
-- `{{summon "values-staging"}}` - the above values will be generated into `values-staging.yaml` 
+- `{{override .web.Routes "host" (print .Chart.Main.name ".zagoapps.com")}}` - we override .webServer.Routes.host value with concat of chart name and domain ".zagoapps.com"
+- `{{summon (print "values-" .Globals.Values.env)}}` - the above values will be generated into a file that is concat of "values-" and global env value. 
 
 After the first summon we only change the global `env` value and call `{{summon "values-prod"}}`. This will generate the same values file as `values-staging.yaml` but with env value changed. You can think of it as an overlay on top of what was already defined. This is useful especially for automatic secret encryption.
 
@@ -109,7 +112,7 @@ Vessels are separated by 3 blocks with "---". First one is strictly for `conf`. 
 
 After we have our vessel ready we can now `rika summon <vessel> -local` to generate the chart. Where vessel is the filename without ".shard" extension. We also pass `-local` flag to do this locally instead of connecting to **rikami api**.
 
-Generated chart using the above example can be found in [examples/myapp/](./examples/myapp/)
+Generated chart using the above example can be found in [examples/app/](./examples/app/)
 
 For more examples take a look at [vessels/](./vessels/). Vessels there are using shards from [shards/](./shards/)
 
