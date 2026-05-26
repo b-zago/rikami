@@ -13,7 +13,7 @@
 
 {{begin "Deployments"}}
 {{bind "name" "Services@runsOn"}}
-{{set "image" "postgres:18-alpine"}}
+{{receive "image"}}
 {{set "runsOn" "postgres"}}
 {{set "component" "database"}}
 {{bind "containerPort" "Services@targetPort"}}

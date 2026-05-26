@@ -1,4 +1,4 @@
-{{shard "WebServer"}}
+{{shard "WebServerSec"}}
 
 {{begin "Routes"}}
 {{set "name" "web-server-route"}}
@@ -11,6 +11,12 @@
 {{set "port" 80}}
 {{receive "targetPort"}}
 
+{{begin "Secrets"}}
+{{set "name" "web-server-envs"}}
+{{bind "runsOn" "Services@runsOn"}}
+{{bind "runsOnList" "Services@runsOn[]"}}
+{{receive "data"}}
+
 {{begin "Deployments"}}
 {{bind "name" "Services@runsOn"}}
 {{receive "image"}}
@@ -18,5 +24,5 @@
 {{receive "runsOn"}}
 {{set "component" "server"}}
 {{bind "containerPort" "Services@targetPort"}}
-
+{{bind "envSecretRefs" "Secrets@name[]"}}
 {{seal}}
