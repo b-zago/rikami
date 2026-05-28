@@ -48,6 +48,10 @@ func main() {
 	appParam := appCmd.String("p", "", "App subcommand parameter")
 	appConf := appCmd.String("conf", "", "Specify the config for this specific command")
 
+	certCmd := flag.NewFlagSet("fetch-cert", flag.ExitOnError)
+	certTarget := certCmd.String("target", "./", "Determines where to save the cert")
+	certConf := certCmd.String("conf", "", "Specify the config for this specific command")
+
 	switch os.Args[1] {
 	case "summon":
 		if argsNum < 3 {
@@ -97,6 +101,16 @@ func main() {
 			Check(err)
 		}
 
+	case "fetch-cert":
+		certCmd.Parse(os.Args[2:])
+
+		if *certConf != "" {
+			Config = LoadConf(*certConf)
+		} else {
+			Config = LoadConf(confPath)
+		}
+
+		GetFreshCert(*certTarget)
 	case "config":
 		MakeConf(confPath)
 

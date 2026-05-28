@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -67,6 +68,27 @@ func NewAppRequest(action, pattern, param string) *AppRequest {
 		Pattern: pattern,
 		Param:   param,
 	}
+}
+
+func GetFreshCert(path string) {
+	url := Config.URL + "/fetch-cert"
+
+	res, err := httpClient.Get(url)
+	Check(err)
+	defer res.Body.Close()
+
+	var cert Response
+	respBody, err := io.ReadAll(res.Body)
+	Check(err)
+	err = json.Unmarshal(respBody, &cert)
+	Check(err)
+
+	path = filepath.Join(path, "cert.pem")
+	f, err := os.Create(path)
+	Check(err)
+	defer f.Close()
+
+	f.WriteString(cert.Message)
 }
 
 func (r SummonRequest) Send() error {
