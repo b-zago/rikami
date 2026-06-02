@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/b-zago/rikami/app"
 	"github.com/b-zago/rikami/summon"
 )
 
@@ -90,7 +91,7 @@ func main() {
 		}
 
 		if *appLocal {
-			AppCallLocal(os.Args[2], os.Args[3], *appParam)
+			app.AppCallLocal(os.Args[2], os.Args[3], *appParam)
 		} else {
 			req := NewAppRequest(os.Args[2], os.Args[3], *appParam)
 			err := req.Send()

@@ -1,8 +1,9 @@
-package main
+package app
 
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,7 +33,9 @@ func AppCallLocal(action, pattern, param string) {
 
 func kill(pattern string) {
 	files, err := filepath.Glob(pattern)
-	Check(err)
+	if err != nil {
+		log.Fatalf("Could not parse glob pattern %s. Error\n%v", pattern, err)
+	}
 
 	for _, file := range files {
 		os.RemoveAll(file)
@@ -45,16 +48,20 @@ func update(pattern string, version string) {
 		os.Exit(2)
 	}
 	files, err := filepath.Glob(pattern + "/Chart.yaml")
-	Check(err)
+	if err != nil {
+		log.Fatalf("Could not parse glob pattern %s. Error\n%v", pattern, err)
+	}
 
 	for _, chartPath := range files {
 
 		data, err := os.ReadFile(chartPath)
-		Check(err)
+		if err != nil {
+			log.Fatalf("Could not read file %s. Error\n%v", chartPath, err)
+		}
 
 		var doc map[string]any
 		if err := yaml.Unmarshal(data, &doc); err != nil {
-			panic(err)
+			log.Fatalf("Could not unmarshal yaml file %s. Error\n%v", chartPath, err)
 		}
 
 		deps := doc["dependencies"].([]any)
@@ -62,9 +69,15 @@ func update(pattern string, version string) {
 
 		var buf bytes.Buffer
 		enc := yaml.NewEncoder(&buf, yaml.Indent(2), yaml.IndentSequence(true))
-		Check(enc.Encode(doc))
+		err = enc.Encode(doc)
+		if err != nil {
+			log.Fatalf("Could not encode yaml data. Error\n%v", err)
+		}
 		enc.Close()
-		Check(os.WriteFile(chartPath, buf.Bytes(), 0644))
+		err = os.WriteFile(chartPath, buf.Bytes(), 0644)
+		if err != nil {
+			log.Fatalf("Could not write to file %s. Error\n%v", chartPath, err)
+		}
 	}
 }
 
@@ -73,7 +86,9 @@ func awake(pattern, env string) {
 		env = "*"
 	}
 	files, err := filepath.Glob(pattern + "/_values-" + env + ".yaml")
-	Check(err)
+	if err != nil {
+		log.Fatalf("Could not parse glob pattern %s. Error\n%v", pattern, err)
+	}
 
 	for _, file := range files {
 		filename := filepath.Base(file)
@@ -88,7 +103,9 @@ func sleep(pattern, env string) {
 		env = "*"
 	}
 	files, err := filepath.Glob(pattern + "/values-" + env + ".yaml")
-	Check(err)
+	if err != nil {
+		log.Fatalf("Could not parse glob pattern %s. Error\n%v", pattern, err)
+	}
 
 	for _, file := range files {
 		filename := filepath.Base(file)
