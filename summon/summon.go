@@ -1,6 +1,7 @@
-package main
+package summon
 
 import (
+	"bufio"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -111,9 +112,12 @@ func (smn *Summon) override(shardPart map[string]any, key string, val any) strin
 }
 
 func (smn *Summon) request(shardPart map[string]any, key string, name string) bool {
+	reader := bufio.NewReader(os.Stdin)
 	fmt.Printf("Please provide me %s:", name)
-	val, err := Reader.ReadString('\n')
-	Check(err)
+	val, err := reader.ReadString('\n')
+	if err != nil {
+		log.Fatal("Could not read the input")
+	}
 	cleanVal := strings.TrimSpace(val)
 	shardPart[key] = cleanVal
 	return true
@@ -346,7 +350,9 @@ func extractIndex(rawStr string) (int, string, bool) {
 		return -1, cleanString, true
 	} else {
 		indexNum, err := strconv.Atoi(index)
-		Check(err)
+		if err != nil {
+			log.Fatalf("Could not extract index %s", index)
+		}
 		return indexNum, cleanString, false
 	}
 }
@@ -422,13 +428,19 @@ func (smn *Summon) SecMake(path string, name string) map[string]string {
 		ksIn, _ := ksCmd.StdinPipe()
 		ksOut, _ := ksCmd.StdoutPipe()
 		err := ksCmd.Start()
-		Check(err)
+		if err != nil {
+			log.Fatalf("Kubeseal exec error:\n%v", err)
+		}
 		_, err = ksIn.Write([]byte(env["value"]))
-		Check(err)
+		if err != nil {
+			log.Fatalf("Kubeseal exec error:\n%v", err)
+		}
 		ksIn.Close()
 		ksBytes, _ := io.ReadAll(ksOut)
 		err = ksCmd.Wait()
-		Check(err)
+		if err != nil {
+			log.Fatalf("Kubeseal exec error:\n%v", err)
+		}
 		secMap[env["name"]] = string(ksBytes)
 	}
 	return secMap
@@ -456,18 +468,26 @@ func (smn *Summon) SecRand(keys ...string) map[string]string {
 		ksIn, _ := ksCmd.StdinPipe()
 		ksOut, _ := ksCmd.StdoutPipe()
 		err := ksCmd.Start()
-		Check(err)
+		if err != nil {
+			log.Fatalf("Kubeseal exec error:\n%v", err)
+		}
 		_, err = ksIn.Write([]byte(val))
-		Check(err)
+		if err != nil {
+			log.Fatalf("Kubeseal exec error:\n%v", err)
+		}
 		ksIn.Close()
 		ksBytes, _ := io.ReadAll(ksOut)
 		err = ksCmd.Wait()
-		Check(err)
+		if err != nil {
+			log.Fatalf("Kubeseal exec error:\n%v", err)
+		}
 		sealedVals[s] = string(ksBytes)
 	}
 	secFile := ".env." + ns + "." + keys[0] + ".secret.random"
 	f, err := os.Create(secFile)
-	Check(err)
+	if err != nil {
+		log.Fatalf("Error creating file %s. Error:\n%v", secFile, err)
+	}
 	defer f.Close()
 
 	for k, v := range vals {
@@ -480,7 +500,9 @@ func (smn *Summon) SecRand(keys ...string) map[string]string {
 
 func EnvMake(path string) []map[string]string {
 	rawEnvs, err := os.ReadFile(path)
-	Check(err)
+	if err != nil {
+		log.Fatalf("Could not read file %s. Error:\n%v", path, err)
+	}
 	envs := strings.TrimSpace(string(rawEnvs))
 	lineSplit := strings.Split(envs, "\n")
 	var list []map[string]string
