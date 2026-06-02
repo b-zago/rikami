@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/b-zago/rikami/app"
+	"github.com/b-zago/rikami/ci"
 	"github.com/b-zago/rikami/summon"
 )
 
@@ -30,6 +31,7 @@ func main() {
 
 	argsNum := len(os.Args)
 	if argsNum < 2 {
+		ci.GetParam("/nyanwatch/endpoints")
 		fmt.Println("Well you kinda have to tell me what to do")
 		os.Exit(2)
 	}
