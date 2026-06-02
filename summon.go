@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log"
 	"maps"
 	"os"
 	"os/exec"
@@ -130,6 +131,24 @@ func (smn *Summon) setTarget(path string) bool {
 func (smn *Summon) endShard() string {
 	smn.ShardCounter++
 	return ""
+}
+
+func (smn *Summon) suffix(key, sfx string) bool {
+	v, ok := smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart][key].(string)
+	if !ok {
+		log.Fatalf("Tried to suffix %s to non-string value %s", sfx, key)
+	}
+	smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart][key] = v + sfx
+	return true
+}
+
+func (smn *Summon) prefix(key, pfx string) bool {
+	v, ok := smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart][key].(string)
+	if !ok {
+		log.Fatalf("Tried to prefix %s to non-string value %s", pfx, key)
+	}
+	smn.ShardMap[smn.CurrentShard][smn.CurrentShardPart][key] = pfx + v
+	return true
 }
 
 func (smn *Summon) bindAll() string {

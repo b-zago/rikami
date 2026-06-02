@@ -153,6 +153,8 @@ func startSummonLocal(vesselName string, targetOverride string) {
 		"map":     MakeMap,
 		"envGen":  summon.envGen,
 		"bind":    summon.bindParts,
+		"suffix":  summon.suffix,
+		"prefix":  summon.prefix,
 	}
 	vesselFuncMap := template.FuncMap{
 		"cast":     summon.collectShard,
