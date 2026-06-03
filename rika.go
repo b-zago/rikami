@@ -31,7 +31,10 @@ func main() {
 
 	argsNum := len(os.Args)
 	if argsNum < 2 {
-		ci.GetParam("/nyanwatch/endpoints")
+		// ci.GetParam("/nyanwatch/endpoints")
+		// ci.PutParam()
+		s := ci.GetParam("/rikami/envs")
+		fmt.Println(s)
 		fmt.Println("Well you kinda have to tell me what to do")
 		os.Exit(2)
 	}
