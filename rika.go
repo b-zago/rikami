@@ -31,10 +31,6 @@ func main() {
 
 	argsNum := len(os.Args)
 	if argsNum < 2 {
-		// ci.GetParam("/nyanwatch/endpoints")
-		// ci.PutParam()
-		s := ci.GetParam("/rikami/envs")
-		fmt.Println(s)
 		fmt.Println("Well you kinda have to tell me what to do")
 		os.Exit(2)
 	}
@@ -113,6 +109,14 @@ func main() {
 		}
 
 		GetFreshCert(*certTarget)
+	// push and pull evs to ssm
+	case "params":
+		switch os.Args[2] {
+		case "push":
+			ci.PutParam()
+		case "pull":
+			ci.PullParams("secrets", "envs")
+		}
 	case "config":
 		MakeConf(confPath)
 

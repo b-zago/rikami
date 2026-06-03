@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -20,7 +21,7 @@ import (
 	"github.com/b-zago/rikami/summon"
 )
 
-func GetParam(arn string) string {
+func GetParam(arn string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	cfg, err := config.LoadDefaultConfig(ctx)
@@ -35,19 +36,63 @@ func GetParam(arn string) string {
 		WithDecryption: aws.Bool(true),
 	})
 	if err != nil {
-		log.Fatalf("Could not get SSM. Error:\n%v", err)
+		if _, ok := errors.AsType[*types.ParameterNotFound](err); ok {
+			return "", fmt.Errorf("Could not find the %s parameter. Will try to continue without it...", arn)
+		} else {
+			log.Fatalf("Could not get SSM. Error:\n%v", err)
+		}
 	}
 
 	// fmt.Println(*param.Parameter.Value)
-	return *param.Parameter.Value
+	return *param.Parameter.Value, nil
+}
+
+func PullParams(params ...string) {
+	repo := GetRepoName()
+
+	for _, p := range params {
+		param := "/" + repo + "/" + p
+		pJSON, err := GetParam(param)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		var data map[string]map[string]string
+		err = json.Unmarshal([]byte(pJSON), &data)
+		if err != nil {
+			log.Fatalf("Could not decode JSON parameter. Error\n%v", err)
+		}
+
+		for k, v := range data {
+			f, err := os.Create(filepath.Join(k))
+			if err != nil {
+				log.Fatalf("Could not create a file %s. Error\n%v", k, err)
+			}
+			defer f.Close()
+
+			var envLines []string
+			for k, v := range v {
+				envLines = append(envLines, k+"="+v)
+			}
+			env := strings.Join(envLines, "\n")
+			f.WriteString(env)
+		}
+
+	}
 }
 
 func PutParam() {
-	repo, ok := os.LookupEnv("REPO_NAME")
-	if !ok {
-		// for local use, searches .git/config for origin url and determines from that
-		repo = GetRepoName()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		log.Fatalf("Could not read AWS creds. Error:\n%v", err)
 	}
+
+	client := ssm.NewFromConfig(cfg)
+	repo := GetRepoName()
 
 	envPaths, _ := filepath.Glob("*.env*")
 	var secretPaths []string
@@ -60,15 +105,15 @@ func PutParam() {
 		}
 	}
 
-	var envs []map[string]map[string]string
-	var secrets []map[string]map[string]string
+	envs := make(map[string]map[string]string)
+	secrets := make(map[string]map[string]string)
 	for _, p := range envPaths {
 		f, err := os.ReadFile(p)
 		if err != nil {
 			log.Fatalf("Could not read .env file %s. Error\n%v", p, err)
 		}
 		data := strings.TrimSpace(string(f))
-		envs = append(envs, map[string]map[string]string{p: summon.ParseEnvFile(data)})
+		envs[filepath.Base(p)] = summon.ParseEnvFile(data)
 	}
 
 	for _, p := range secretPaths {
@@ -77,7 +122,7 @@ func PutParam() {
 			log.Fatalf("Could not read .env file %s. Error\n%v", p, err)
 		}
 		data := strings.TrimSpace(string(f))
-		secrets = append(secrets, map[string]map[string]string{p: summon.ParseEnvFile(data)})
+		secrets[filepath.Base(p)] = summon.ParseEnvFile(data)
 	}
 
 	fmt.Println(repo)
@@ -93,16 +138,6 @@ func PutParam() {
 
 	// fmt.Println(string(envsJSON))
 	// fmt.Println(string(secretsJSON))
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	cfg, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		log.Fatalf("Could not read AWS creds. Error:\n%v", err)
-	}
-
-	client := ssm.NewFromConfig(cfg)
 
 	_, err = client.PutParameter(ctx, &ssm.PutParameterInput{
 		Name:      aws.String("/" + repo + "/envs"),
@@ -125,6 +160,10 @@ func PutParam() {
 }
 
 func GetRepoName() string {
+	repo, ok := os.LookupEnv("REPO_NAME")
+	if ok {
+		return repo
+	}
 	confPath := filepath.Join(".git", "config")
 	f, err := os.Open(confPath)
 	if err != nil {
@@ -134,7 +173,6 @@ func GetRepoName() string {
 
 	scanner := bufio.NewScanner(f)
 
-	var repo string
 	inRemote := false
 	regex := regexp.MustCompile(`\[remote ".*"\]`)
 	for scanner.Scan() {
