@@ -1,9 +1,0 @@
-confs:
-  - name: Chart
-    version: 0.1.15
-
-envs:
-  prod:
-    - shard: WebServer
-      runsOn: python
-      port: 8000

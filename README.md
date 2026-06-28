@@ -1,245 +1,154 @@
 # Rikami
 
-Typical workflow for both local work and with API can be found [here](https://github.com/b-zago/k3s-cluster#deployments). 
+⚠️ **Under active refactor.** Rikami is currently undergoing a total refactor. Most of the core functionality is complete and working. Anything documented here that is **not yet implemented** is clearly marked with a 🚧 **WIP** tag.
 
-## Summary
+**Rikami** is a Helm chart generation and deployment automation toolkit. Its CLI, `rika`, turns a small declarative manifest (`rikami.yaml`) into a ready-to-deploy Helm chart with minimal boilerplate — handling templating, multi-environment values, and secret sealing along the way.
 
-Rika is a Helm chart generation and deployment automation CLI.
+Generated charts depend on the [rikami-charts](https://github.com/b-zago/rikami-charts) Helm library, which provides the actual Kubernetes resource templates (`lib.*`). Rikami only generates the `values-<env>.yaml`, `Chart.yaml`, and `templates/main.yaml` that drive that library.
 
-In short it is used to automate generating Helm charts with the help of preconfigured templates and functions and deploying that helm chart as an application directly to the cluster.
+## Workflow
 
-Generated charts are using [rikami chart library](https://github.com/b-zago/rikami-charts) to create desired resources.
+The whole point of Rikami is to get from "I wrote an app" to "it's running in the cluster" without hand-writing Kubernetes manifests:
 
-With the help of [rikami api](https://github.com/b-zago/rikami-api) process of deployment can be fully automatic. It generates charts from application templates available in it's repo and pushes them directly to a target repo. 
+1. **Write your application** — an API, a worker, anything that ships as a container image.
+2. **Describe it in `rikami.yaml`** using resources (_shards_, _fragments_, _confs_) from the [rikami-base](https://github.com/b-zago/rikami-base) repo. These are Helm-template-like building blocks tailored for the rikami-charts library.
+3. **A runner generates the chart.** A CI job (e.g. GitHub Actions via 🚧 **rikami-action**) runs `rika manifest`, which uses the `ci` package to fetch the referenced templates, render them, seal secrets, and emit a complete Helm chart.
+4. **The chart is committed and pushed** to your central Kubernetes repo. 🚧 **WIP** — auto-commit/push is done by the runner; locally `rika manifest` just writes the chart to disk.
+5. **GitOps reconciles and deploys.** ArgoCD (or any other GitOps tool) watches the k8s repo and rolls out the change.
 
-This readme might not be up to date as I'm constantly developing this project, but it should contain most of the functionality.
+## Concepts
 
-## Chart generation (Locally)
+Rikami's templates live in a separate **base repo** (`base_owner/base_repo` in config, e.g. `rikami-base`) and are fetched on demand over the GitHub GraphQL API. Every reference is **version-pinned** to a git tag/ref with `@`:
 
-Primary usage of **rika** is to generate charts meant for [rikami chart library](https://github.com/b-zago/rikami-charts) to consume.
+- **Shard** — a top-level resource template, e.g. `WebServer`, `Postgres`, `Redis`. Referenced as `WebServer@v0.0.1`. Fetched from `shards/<name>.yaml`.
+- **Fragment** — an add-on embedded inside a shard, written as a **capitalized** nested key, e.g. a `Secret@v0.0.1` block under a shard. Fetched from `fragments/<name>.yaml`.
+- **Conf** — chart-level config such as `Chart@v0.0.1`, which renders to `Chart.yaml`. Fetched from `confs/<name>.yaml`.
 
-This leverages Go's template engine as "presets" (called "shards") for commonly used sets of resources.
+A minimal [rikami.yaml](rikami.yaml):
 
-**Shards** are composed with **shard parts**
-**Vessels** are composed with **Shards**
+```yaml
+confs:
+  Chart@v0.0.1:
+    rikamiVersion: 0.2.1 # version of the rikami-charts library to depend on
+    appName: app
 
-### Shards
-For example 
+envs:
+  - prod:
+      WebServer@v0.0.1:
+        image: app:latest
+        runsOn: golang
+        port: 80
+      Database@v0.0.1:
+        url: "(( secValue `.env.database.secret` `url` ))"
+        schema: "(( fromFile `schema.sql` | toYAML | hindent 6 ))"
+      Redis@v0.0.1:
+        noop: ""
 ```
 
-{{shard "WebServer"}}
+**Multiple instances of a shard** — append `_<alias>` to reuse the same template under a distinct name, e.g. `Postgres@v0.0.1` and `Postgres_1@v0.0.1`.
 
-{{begin "Routes"}}
-{{set "name" "web-server-route"}}
-{{set "runsOn" "web-server-service"}}
-{{receive "host"}}
+**Environment inheritance** — `envs` is an ordered list. The first environment acts as the base; every later environment **inherits any key it doesn't override**. So you can put the full definition under `prod` and let `staging` specify only what differs.
 
-{{begin "Services"}}
-{{bind "name" "Routes@runsOn"}}
-{{set "runsOn" "web-server"}}
-{{set "port" 80}}
-{{receive "targetPort"}}
+**Templating** — values can embed expressions using `(( ... ))`, which are translated to Go/Helm `{{ ... }}` in the generated chart. A few of these (the secret functions, `fromFile`, etc.) are evaluated at generation time. Note that `"(( ... ))"` strips the surrounding quotes in the output — wrap the whole thing in single quotes `'...'` if you need quoting preserved.
 
-{{begin "Deployments"}}
-{{bind "name" "Services@runsOn"}}
-{{receive "image"}}
-{{set "imagePullSecret" "ghcr-creds"}}
-{{receive "runsOn"}}
-{{set "component" "server"}}
-{{bind "containerPort" "Services@targetPort"}}
+**Cross-referencing shards** — you can pull a value from another shard with `(( .Shards.<shard>.<value> ))`, using the shard's alias when you've defined more than one. The expression also has `.App` and `.Domain` available. For example, to wire a web server to a second Postgres instance's generated secret:
 
-{{seal}}
+```yaml
+WebServer@v0.0.1:
+  deployment:
+    envSecretRefs:
+      - "(( .Shards.Postgres_1.secret.name ))"
+Postgres_1@v0.0.1:
+  image: postgres:18-alpine
 ```
 
-A quick rundown of what's going on:
+The output is written to `<appName>/`:
 
-- `{{shard "WebServer"}}` - we declare this is a shard from WebServer.shard file.
-- `{{begin "Routes"}}` - we start defining a **shard part**.
-- `{{set "name" "web-server-route"}}` - we set shard's .Routes.name to "web-server-route".
-- `{{receive "host"}}` - we sign that this shard's .Routes.host field must be provided by a **vessel** (more on vessels below).
-- `{{bind "name" "Routes@runsOn"}}` - basically we specify here that .Services.name will be equal to same shard's .Routes.runsOn field value. 
-- `{{seal}}` - we declare that this is the end of the shard.
+- `Chart.yaml` — from the Chart conf.
+- `values-<env>.yaml` — one per environment (e.g. `values-prod.yaml`, `values-staging.yaml`).
+- `templates/main.yaml` — includes the relevant `lib.*` templates from rikami-charts.
 
-For more information look into **Shard functions**
+## The `rika` CLI
 
-For more shards examples take a look at [shards/](./shards/)
+- `rika config` — interactively create the config file.
+- `rika config -edit <field> -value <val>` — set a single field. Use `-value -` to read a sensitive value from stdin.
+- `rika manifest` — read `./rikami.yaml`, prompt for the app name, and generate the Helm chart. The core command.
+- `rika params push -env <env>` — push local `.env*` files to AWS SSM (see [Secrets](#secret-handling)).
+- `rika params pull -env <env> -params envs,secrets` — pull params from SSM back into local files.
+- `rika seal -ns <namespace> -name <name>` — read a value from stdin and emit a sealed-secret encrypted blob.
+- `rika login` — log in to the rikami API; stores tokens next to the config as `creds.json`.
+- `rika summon` — 🚧 **WIP** — trigger generation/deploy via the rikami API. Currently a stub.
 
-### Vessels
-**Shards** are just blocks that are used to build the application for you to customize further. The collection of customized shards is called a **Vessel**
+If the app name isn't given to `manifest`, it falls back to `$REPO_NAME`, then to the remote name parsed from `.git/config`.
 
-Here is a simple example of putting shards together inside a vessel:
+## Secret handling
+
+Rikami keeps plaintext secrets out of git through two mechanisms that work together.
+
+### AWS SSM Parameter Store
+
+Per-environment env vars and secrets are stored as encrypted `SecureString` JSON parameters under:
 
 ```
-{{conf "Chart"}}
+/<repo>/<env>/envs       # from .env, .env.* (non-secret) files
+/<repo>/<env>/secrets    # from .env*.secret files
+```
+
+- `rika params push -env prod` globs local `.env*` files, routes any `*.secret` ones to `secrets` and the rest to `envs`, and uploads them.
+- `rika params pull -env prod -params envs,secrets` fetches them and rehydrates the local files.
+
+During `rika manifest`, the generator automatically pulls the params it needs for each environment and keeps SSM in sync (e.g. newly generated random secrets are written back).
+
+AWS credentials are read from the standard AWS SDK config chain.
+
+### Sealed Secrets
+
+So secrets can be safely committed to the k8s repo, Rikami encrypts them with [bitnami sealed-secrets](https://github.com/bitnami-labs/sealed-secrets). The cluster's public cert is fetched from the rikami API's `/cert` endpoint.
+
+Secret template functions, usable in `rikami.yaml`:
+
+- `(( secRand ))` — generate a random 32-byte secret, seal it into the chart, and store the plaintext in SSM. Use inside a secret shard/fragment's `data` block.
+- `(( secFile `.env.<name>.secret` ))` — seal every value from the named secret file (pulled from SSM).
+- `(( secValue `.env.<name>.secret` `key` ))` — seal a single value from a secret file.
+
+`rika seal` exposes the same sealing for ad-hoc use outside chart generation.
+
+### General template functions
+
+Available in `rikami.yaml` value expressions: `default`, `toYAML`, `quote`, `indent`, `nindent`, `hindent`, and `fromFile <path>` (inline a file's contents).
+
+## Configuration
+
+`rika config` writes a JSON file to your OS config dir (e.g. `~/.config/rika/rika.json` on Linux):
+
+- `URL` — base URL of the rikami API.
+- `HMAC` — shared secret used to sign API requests (sensitive).
+- `base_gh_token` — GitHub token used to read templates from the base repo.
+- `base_owner` — owner of the base/template repo.
+- `base_repo` — name of the base/template repo (e.g. `rikami-base`).
+- `domain` — base domain used when generating routes/hosts.
+
+## Install / build
+
+Requires Go 1.26+.
+
+```sh
+# build the CLI
+go build -o rika .
+
+# or via goreleaser (linux/windows, arm64/amd64)
+goreleaser release --clean
+```
+
+The produced binary is named `rika`.
+
+## Related repositories
+
+- [rikami-charts](https://github.com/b-zago/rikami-charts) — the Helm library that generated charts depend on (`oci://ghcr.io/b-zago/rikami-charts`).
+- [rikami-base](https://github.com/b-zago/rikami-base) — the shard / fragment / conf templates consumed by `rika manifest`.
+- [rikami-api](https://github.com/b-zago/rikami-api) — serves the sealed-secrets cert, handles login, and 🚧 powers fully automated deploys.
+- 🚧 **rikami-action** — GitHub Action wrapper around `rika manifest` for CI. Not yet built.
+
 ---
-{{cast "Chart" "Chart"}}
-{{cast "WebServer" "web"}}
----
-{{append .Chart.Main "dependencies[0]" (map "version" "0.1.12")}}
-{{- global "env" "prod" -}}
 
-{{override .Chart.Main "description" "App description"}}
-{{request .Chart.Main "name" "Chart name"}}
-{{$prefix := print .Chart.Main.name "-"}}
-
-{{target .Chart.Main.name}}
-		
-{{override .web.Deployments "image" "app:latest"}}
-{{override .web.Deployments "runsOn" "python"}}
-{{override .web.Routes "host" (print .Chart.Main.name ".zagoapps.com")}}
-{{override .web.Services "targetPort" 8000}}
-{{summon (print "values-" .Globals.Values.env)}}
-{{global "env" "staging"}}
-{{override .web.Routes "host" (print .Chart.Main.name "-staging.zagoapps.com")}}
-{{summon (print "values-" .Globals.Values.env)}}
-```
-
-And again a quick rundown. For more details refer to **Vessel functions**:
-
-- `{{conf "Chart"}}` - signs which shards should be treated as configuration. (Confs are files that will be generated separately from main vessel values. Look at **Confs and Globals** section)
-- `{{cast "WebServer" "web"}}` - we are defining that we will be using `WebServer` shard and we are giving it a defined name of "web".
-- `{{global "env" "staging"}}` - we set a global value for "env" (Look at **Confs and Globals** section)
-- `{{request .Chart.Main "name" "Chart name"}}` - we will prompt user for chart name. Here we will give it "myapp"
-- `{{append .Chart.Main "dependencies[0]" (map "version" "0.1.1")}}` - we set Rikami library version using append function.
-- `{{$prefix := print .Chart.Main.name "-"}}` - we can manipulate data freely and use default Go template functions without a problem.
-- `{{target .Chart.Main.name}}` - specifies where to create generated chart. 
-- `{{override .web.Routes "host" (print .Chart.Main.name ".zagoapps.com")}}` - we override .webServer.Routes.host value with concat of chart name and domain ".zagoapps.com"
-- `{{summon (print "values-" .Globals.Values.env)}}` - the above values will be generated into a file that is concat of "values-" and global env value. 
-
-After the first summon we only change the global `env` value and call `{{summon "values-prod"}}`. This will generate the same values file as `values-staging.yaml` but with env value changed. You can think of it as an overlay on top of what was already defined. This is useful especially for automatic secret encryption.
-
-Vessels are separated by 3 blocks with "---". First one is strictly for `conf`. Second is strictly for `cast` (although you could also set globals there). And last one is for everything else.
-
-After we have our vessel ready we can now `rika summon <vessel> -local` to generate the chart. Where vessel is the filename without ".shard" extension. We also pass `-local` flag to do this locally instead of connecting to **rikami api**.
-
-Generated chart using the above example can be found in [examples/app/](./examples/app/)
-
-For more examples take a look at [vessels/](./vessels/). Vessels there are using shards from [shards/](./shards/)
-
-## Vessel generation
-
-Let's say I want to create a vessel for my python application that needs postgres to work. I'm too lazy to write the vessel by hand so I just:
-
-`rika forge newapp`
-
-![Demo](./examples/demo.gif)
-
-Forge scans each shard that you call for fields to **receive** and prompts you automatically.
-
-Here for postgres secret data we used ***input function*** `!secRand` which takes keys and will put ***vessel function*** `secRand` as value to override postgres secret data with.
-
-We also used ***forge function*** `!appendSec` to append postgres secret to app's deployment. Since forge also creates an overlay for values-staging, this will be copied to overlay as well to encrypt secrets for another env specifically.
-
-Forge also applies the standard `Chart.shard` as conf.
-
-For this example it wil create `newapp.ves` file in your rikami resources directory specified during config.
-
-Generated vessel with the example above can be found in [exmaples/forge/](./examples/forge/) as well as generated chart using that vessel.
-
-## Confs and Globals
-
-Configuration shards data will be generated alongside the main vessel data. Configuration shards should only have one part called `Main` and need to be signed properly in the vessel (refer to **Functions** section)
-
-Globals are key-value pairs that will be generated outside the main vessel groups, at the top level of a file. You can access global values as `.Globals.Values.<key>`. To set global values refer to **Functions**. Global value `env` must be set.
-
-## Commands
-
-### rika summon <vessel>
-
-Summons a vessel as a generated chart. Takes these flags:
-
-- `-local` - makes chart generation happen locally instead of connecting to rikami api.
-- `-target` - overrides the path of where the chart will be generated.
-- `-envs` - Optional. Separated .env files to send over to rikami api so that it can generate the chart upon them.
-- `-conf` - Specifies config file to use for that specific command execution.
-
-### rika forge <vessel>
-
-Generates new vessel and saves it into the specified resource path found in config file.
-
-You specify the rikami chart library version and then customize the vessel to your needs.
-
-More information about what you can do can be found in [Forge functions and commands](#forge-functions-and-commands) and [Forge input functions](#forge-input-functions) sections.
-
-### rika app <action> <pattern> [-p parameter]
-
-Pass `-local` flag to execute locally. Otherwise it will send requests to rikami api.
-
-Parameters description:
-
-- `<action>` - kind of action to do with the app. Actions listed below.
-- `<pattern>` - this can be just the name of the app (which should be folder name) or a glob pattern using * as wildcards. When using wildcards you should wrap your argument with quotes, since shell can get confused easily.
-- `[-p parameter]` - Optional. Applies for `update`, `sleep` and `awake` actions.
-
-#### Actions
-
-- `kill` - Deletes the directory/directories and all of its contents. Effectively removing the generated chart.
-- `sleep` - Changes the name of **values-*.yaml** files to add '_' prefix. Effectively disabling it with a GitOps solution in place and configured correctly.
-- `awake` - Removes '_' prefix from **values-*.yaml** files.
-- `update` - Updated rikami library chart version.
-
-## Functions
-
-Target path string is constructed in the following way:
-- `Services@name[]` - here we target `name` field in `Services` shard part and return the result as list.
-- `Secrets@runsOnList[1]` - we can also target specific elements in a list.
-
-### Shard functions
-- `{{shard <filename:string>}}` - indicates the beginning of a shard, takes filename of a shard without extension
-- `{{begin <partName:string>}}` - begins part of a shard.
-- `{{set <key:string> <value:any>}}` - sets value of a key in a shard part.
-- `{{receive <key:string>}}` - marks a key in a shard part as required to be provided.
-- `{{envGen <name:string> <value:string>}}` - returns a list of maps that can be applied to `envVars`. You can provide many name-value pairs.
-- `{{list <any>}}` - takes many values and returns a list of them.
-- `{{map <key:string> <value:any>}}` - returns a map of key-value pairs. You can provide many key-value pairs.
-- `{{bind <key:string> <targetPathString:string>}}` - binds the value of a key to a specific value under the target path string. 
-- `{{seal}}` - signals the end of a shard.
-
-### Vessel functions
-- `{{conf <definedName:string>}}` - signs which shards should be treated as configuration. This should be a defined name of configuration shard.
-- `{{cast <shardName:string> <definedName:string>}}` - signs that this shard will be used in a vessel under specified `definedName`
-- `{{global <key:string> <value:string>}}` - sets a global key-value pair. 
-- `{{request <key:string> <prompt:string>}}` - upon calling `summon` command, this will prompt the caller to provide a value. 
-- `{{override <shardPath> <key:string> <value:any>}}` - overrides the value under the key in the `shardPath`. This can also be used to add key-value pair to shard part. See **Chart generation** for examples.
-- `{{append <shardPath> <targetPathString:string> <value:list|map>}}` - appends list to list or map to map. In case of maps, if the same key occurs it gets overwritten. Can use target path string to access specific values to append to. 
-- `{{target <filepath:string>}}` - specifies where to create generated chart.
-- `{{envMake <path:string>}}` - takes path to .env file relative to where the `summon` is run from and returns the list of maps for `envVars`. 
-- `{{secMake <path:string>}}` - takes path to .env file relative to where the `summon` is run from and returns a map of key-value pairs where values already have been sealed by kubeseal. 
-- `{{secRand <secretName:string> <key:string>}}` - returns map of key-value pairs with values randomly generated and sealed with kubeseal. Unsealed values are saved into `.env.<secretName>.secret` in the location from where `summon` was called. You can specify many keys.
-- `{{summon <filename:string>}}` - ends the current vessel configuration and writes to a specified filename.
-- `{{envGen <name:string> <value:string>}}` - returns a list of maps that can be applied to `envVars`. You can provide many name-value pairs.
-- `{{list <any>}}` - takes many values and returns a list of them.
-- `{{map <key:string> <value:any>}}` - returns a map of key-value pairs. You can provide many key-value pairs.
-
-### Forge functions and commands
-
-Functions have `!` prefix
-
-- `!ls` - lists available shards.
-- `!dryrun` - displays how currently forged vessel would look like
-- `!override <shardPath> <key:string> <value:any>` - works same as regular override. You don't wrap `key` in quotes.
-- `!append <shardPath> <targetPathString:string> <value:list|map>` - works same as regular append. You don't wrap `targetPathString` in quotes.
-- `!appendSec <definedName:string> <shardPath>` - it tries to detect `Secrets` part in a shard and it appends `envSecretRef` to specified `shardPath` as well as updating `runsOnList` of the secret. Note that you need to add "." before paths. 
-- `!overrideEnvGen <shardPath>` - easy way to override `envVars` with `envGen`. Will prompt for name-value pairs. 
-- `shard <filename:string>` - add shard to the currently forged vessel.
-- `done` - finish forging and save.
-- `exit` - does exactly that. Nothing gets saved.
-
-### Forge input functions
-- `!secMake` - returns `secMake` function with .env.secret as filepath 
-- `!envMake` - returns `envMake` function with .env as filepath 
-- `!secRand` - returns `secRand` function and will prompt for keys
-- `!chartDomain` - returns concatenated chart name and domain that is set in config
-
-## Important notes
-- configuration shards should have only one part `Main`
-- order matters as templates are executed line-by-line.
-- avoid mixing same types of shards (that have the same name labels for example) in the same vessel
-- if you define 2 charts from the same file the bindLabels (defined in config file) will get the incrementing suffix (like "*-1" "*-2" and so on)
-- you can only append/override basing off of specified shard parts.
-- shard file names and defined names can't contain '-' as it break Go's templating. Use camelCase instead.
-- after the first `{{summon}}` binds are generally disabled. Meaning sources that were bound until the first `{{summon}}` will stay in that state, but they will not bind automatically after that if you change the bind target. Use overlays for small and precise changes, not relying on binding behaviour.
-
-## TODO
-
-- [ ] improve config management
+This README tracks an actively moving target and may lag slightly behind the code, but it should cover the bulk of what `rika` can do today.
