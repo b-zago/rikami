@@ -72,6 +72,7 @@ func GetVesFuncs() template.FuncMap {
 		"secRand":  secRand,
 		"secFile":  secFile,
 		"secValue": secValue,
+		"envFile":  envFile,
 		"fromFile": fromFile,
 		"nindent":  nindent,
 		"toYAML":   toYAML,
@@ -211,4 +212,29 @@ func getSealedMap(filename string) map[string]string {
 		sealedMap[k] = string(sealed)
 	}
 	return sealedMap
+}
+
+func envFile(filename string) string {
+	env := CurrValues.CurrentEnv
+
+	params, ok := SSMParameters.Data[env]
+	if !ok || params == nil {
+		PullEnvParams(false, env, "envs")
+		params = SSMParameters.Data[env]
+	}
+	if params == nil || params.Envs == nil {
+		log.Fatalf("could not find %q data. envs are empty in env %q", filename, env)
+	}
+	data, ok := params.Envs[filename]
+	if !ok {
+		log.Fatalf("could not find %q data. no such env file in env %q", filename, env)
+	}
+
+	envs := make([]map[string]string, len(data))
+	var i int
+	for k, v := range data {
+		envs[i] = map[string]string{"name": k, "value": v}
+		i++
+	}
+	return toYAML(envs)
 }
