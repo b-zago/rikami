@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -49,8 +50,17 @@ type PullEnvParamsResult struct {
 
 var SSMParameters = SSMData{Data: make(map[string]*SSMParams)}
 
+// ssmDataMu guards concurrent access to SSMParameters.Data, which processFinals
+// mutates from one goroutine per env (concurrent map writes panic otherwise).
+// ssmClientOnce ensures the SSM client is initialized exactly once even when
+// those same goroutines call LoadClient at the same time.
+var (
+	ssmDataMu     sync.Mutex
+	ssmClientOnce sync.Once
+)
+
 func (s *SSMData) LoadClient() {
-	if s.Client == nil {
+	ssmClientOnce.Do(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
@@ -60,7 +70,7 @@ func (s *SSMData) LoadClient() {
 		}
 
 		s.Client = ssm.NewFromConfig(cfg)
-	}
+	})
 }
 
 func (p EnvFileMap) Put(repo, envir, key string) error {
@@ -174,7 +184,25 @@ func PullEnvParams(local bool, envir string, params ...string) {
 			}
 		}
 		if !local {
-			SSMParameters.Data[envir] = result.Data
+			// Merge the pulled field into the per-env struct instead of replacing
+			// it. Each pullEnvParam returns a fresh SSMParams with only one field
+			// set (Envs or Secrets), so assigning result.Data directly would let a
+			// later param clobber an earlier one when several are pulled together.
+			// The lock guards SSMParameters.Data because processFinals fans this
+			// out across envs concurrently.
+			ssmDataMu.Lock()
+			existing := SSMParameters.Data[envir]
+			if existing == nil {
+				existing = &SSMParams{}
+				SSMParameters.Data[envir] = existing
+			}
+			if result.Data.Envs != nil {
+				existing.Envs = result.Data.Envs
+			}
+			if result.Data.Secrets != nil {
+				existing.Secrets = result.Data.Secrets
+			}
+			ssmDataMu.Unlock()
 		}
 	}
 }
